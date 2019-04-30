@@ -119,7 +119,7 @@ module.exports = {
 ## 16. Reading a Note
 
 - 기존 addNote같은경우 filter 메서드를 사용해서 새로운 배열을 생성할 수도 있으나 문제는 filter 메서드의 경우 모든 리스트를 검색한다는것에 있다.
-- 예를들어 특정 천개의 타이틀 리스트중 중간에 있는 타이틀을 찾기위해 filter 메서드를 사용하게 된다면 중간 검색도중 원하는 타이틀을 찾았음에도 불구하고 멈추지 않고 끝까지 모든 타이틀을 검색한다. 
+- 예를들어 천개의 타이틀 리스트중 중간에 있는 특정 타이틀을 찾기위해 filter 메서드를 사용하게 된다면 중간 검색도중 원하는 타이틀을 찾았음에도 불구하고 멈추지 않고 끝까지 모든 타이틀을 검색한다. 
   ```js
     const addNote = (title, body) => {
     const notes = loadNotes()
@@ -137,7 +137,7 @@ module.exports = {
     }
   }
   ```
-- 그러기 위해 filter 대신 find 메서드를 사용할것
+- 때문에 filter 대신 find 메서드를 사용할것
   ```js
     const addNote = (title, body) => {
     const notes = loadNotes()
@@ -263,6 +263,7 @@ module.exports = {
 
   const url = 'https://api.darksky.net/forecast/ead5a6070fa3453c83598e172962f096/37.8267,-122.4233'
 
+  // json: true는 url에서 받은 데이터를 객체로 파싱해준다
   request({ url: url, json: true }, (error, response) => {
     console.log(response.body.currently)
   })
@@ -370,3 +371,120 @@ module.exports = {
   })
   ```
 4. Test your work
+
+## 23. Callback Abstraction
+
+- 이번에는 함수안에서 http 요청을 하는 진짜 함수를 만들어볼것임
+- darksky api에서 받은 위도와 경도값을 geoCoding 함수에 넣어줬지만 함수가 너무 복잡하다.
+  ```js
+  const url2 = 'https://api.mapbox.com/geocoding/v5/mapbox.places/Los%20Angeles.json?access_token=pk.eyJ1IjoiZ29vbmdhbWphIiwiYSI6ImNqdjF6NjAwdzF6dXAzeXMwNTFsZmR6aDAifQ.LP4Fr2wam10Oa4NZp1RrAw&limit=1'
+
+  request ({ url: url2, json: true}, (error, response) => {
+    
+    if(error) {
+      console.log('Unable to connect to location service')
+    } else if(response.body.features.length === 0) {
+      console.log('Unable to find location try another search')
+    } else {
+      const latitude = response.body.features[0].center[1]
+      const longitude = response.body.features[0].center[0]
+      console.log(latitude, longitude)
+    }
+
+    const url = 'https://api.darksky.net/forecast/ead5a6070fa3453c83598e172962f096/37.8267,-122.4233?units=us&lang=ko'
+
+  request({ url: url, json: true }, (error, response) => {
+    if(error) {
+      console.log('Unable to connect to weather service')
+    } else if(response.body.error) {
+      console.log('Unable to find location')
+    } else {
+      const weatherInfo = response.body.currently
+      console.log(`${response.body.daily.data[0].summary} It is currently ${weatherInfo.temperature} degrees out. There is a ${weatherInfo.precipProbability}% chance of rain.`)
+    }
+  })
+
+  })
+  ```
+- 이렇기 때문에 콜백함수를 이용해 정리해서 도시와 경도 위도를 구할것
+  ```js
+    const geocode = (address, callback) => {
+    // encodeURIComponent를 써주면 특수문자가 들어간 단어도 검색 가능해진다
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=pk.eyJ1IjoiZ29vbmdhbWphIiwiYSI6ImNqdjF6NjAwdzF6dXAzeXMwNTFsZmR6aDAifQ.LP4Fr2wam10Oa4NZp1RrAw&limit=1`
+
+    request({ url: url, json: true}, (error, response) => {
+      if (error) {
+        callback('Unable to connect to location services', undefined)
+      } else if (response.body.features.length === 0) {
+        callback('Unable to find location try another search', undefined)
+      } else {
+        callback(undefined, {
+          latitude: response.body.features[0].center[0],
+          longitude: response.body.features[0].center[1],
+          location: response.body.features[0].place_name
+        })
+      }
+    })
+  }
+
+  geocode('Seoul', (error, data) => {
+    console.log('Error', error)
+    console.log('Data', data)
+  })
+
+<!-- Data { latitude: 127,
+  longitude: 37.58333,
+  location: 'Seoul, South Korea' } -->
+```
+```
+## 24. Callback Abstraction Challenge
+
+### Challenge: Create a reusable function for getting the forecast
+1. Setup the "forecast" function in utils/forecast.js
+2. Require the function in app.js and call it as shown below
+3. The forecast function should have three potential calls to callback:
+   - Low level error, pass string for error
+   - Coordinate error, pass string for error
+   - Success, pass forecast string for data (same format as from before)
+  ```js
+    const forecast = (latitude, longitude, callback) => {
+
+    const url = `https://api.darksky.net/forecast/ead5a6070fa3453c83598e172962f096/${encodeURIComponent(latitude)},${encodeURIComponent(longitude)}?units=us&lang=ko`
+
+    request({ url: url, json: true}, (error, response) => {
+      if(error) {
+        callback('Unable to connect to weather service', undefined)
+      } else if (response.body.error) {
+        callback('Unable to find location', undefined)
+      } else {
+        callback(undefined, {
+          summary: response.body.daily.data[0].summary,
+          temperature: response.body.currently.temperature,
+          precipProbability: response.body.currently.precipProbability,
+        })
+      }
+    })
+  }
+
+    forecast(-75.7088, 44.1545, (error, data) => {
+    console.log('Error', error)
+    console.log('Data', data)
+  })
+  ```
+
+## 25. Callback Chaining
+
+- app.js 파일에서 장소의 정보와 날씨 정보 둘다 가지고있다. 
+  ```js
+    geocode('Incheon', (error, data) => {
+    console.log('Error', error)
+    console.log('Data', data)
+  })
+
+  forecast(-75.7088, 44.1545, (error, data) => {
+    console.log('Error', error)
+    console.log('Data', data)
+  })
+  ```
+- 하지만 두개의 정보는 따로 작동되는중 
+- callback chaining 패턴을 이용해 두개의 정보를 연결시켜보자 
