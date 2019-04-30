@@ -294,7 +294,7 @@ module.exports = {
 
 - Geocoding api를 이용해 받은 위도 / 경도 정보를 날씨앱에 전달해 원하는 장소의 날씨를 찾아볼 것임
 
-### Challenge: Print the lat/long for Lost Angeles
+### Challenge: Print the lat/long for Los Angeles
 
 1. First off a new request to the URL explored in browser
 2. Have the request module parse it as JSON
