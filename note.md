@@ -410,6 +410,7 @@ module.exports = {
   ```js
     const geocode = (address, callback) => {
     // encodeURIComponent를 써주면 특수문자가 들어간 단어도 검색 가능해진다
+    // 위도와 경도의 위치를 주의할것
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=pk.eyJ1IjoiZ29vbmdhbWphIiwiYSI6ImNqdjF6NjAwdzF6dXAzeXMwNTFsZmR6aDAifQ.LP4Fr2wam10Oa4NZp1RrAw&limit=1`
 
     request({ url: url, json: true}, (error, response) => {
@@ -488,3 +489,309 @@ module.exports = {
   ```
 - 하지만 두개의 정보는 따로 작동되는중 
 - callback chaining 패턴을 이용해 두개의 정보를 연결시켜보자 
+  ```js
+    geocode('Incheon', (error, data) => {
+    console.log('Error', error)
+    console.log('Data', data)
+    forecast(data.latitude, data.longitude, (error, data) => {
+      console.log('Error', error)
+      console.log('Data', data)
+    })
+  })
+  ```
+- 연결된 두개의 함수를 refactor 시켜주기
+  ```js
+    geocode('Incheon', (error, data) => {
+    if(error) {
+      return console.log(error)
+    } 
+    console.log('Error', error)
+    console.log('Data', data)
+    forecast(data.latitude, data.longitude, (error, forecastData) => {
+      if(error) {
+        return console.log(error)
+      }
+      console.log(data.location)
+      console.log(forecastData)
+    })
+  })
+  ```
+
+### Challenge: Accept location via command line argument
+
+1. Access the command line argument without yargs (hint: second vid in section 3)
+2. Use the string value as the input for geocode
+3. Only geocode if a location was provided
+  ```js
+  const address = process.argv[2]
+
+  if(!address) {
+    console.log('Plase provide an address')
+  } else {
+    geocode(address, (error, data) => {
+      if(error) {
+        return console.log(error)
+      } 
+      console.log('Error', error)
+      console.log('Data', data)
+      forecast(data.latitude, data.longitude, (error, forecastData) => {
+        if(error) {
+          return console.log(error)
+        }
+        console.log(data.location)
+        console.log(forecastData)
+      })
+    })
+  }
+  ```
+4. Test your work with a couple location
+  ```js
+  // $ node app.js Seoul
+  ```
+
+## 26. Destructuring and Property Shorthand Challenge
+
+### Challenge: Use both destructuring and property shorthand in weather app
+
+1. Use destructuring in app.js, forcast.js and geocode.js
+  ```js
+  // app.js
+  if(!address) {
+  console.log('Plase provide an address')
+  } else {
+    geocode(address, (error, {latitude, longitude, location}) => {
+      if(error) {
+        return console.log(error)
+      } 
+      forecast(latitude, longitude, (error, forecastData) => {
+        if(error) {
+          return console.log(error)
+        }
+        console.log(location)
+        console.log(forecastData)
+      })
+    })
+  }
+
+  // forecast.js
+    const forecast = (latitude, longitude, callback) => {
+
+    const url = `https://api.darksky.net/forecast/ead5a6070fa3453c83598e172962f096/${encodeURIComponent(longitude)},${encodeURIComponent(latitude)}?units=us&lang=ko`
+
+    request({ url, json: true}, (error, response) => {
+      const {temperature, precipProbability} = response.body.currently
+      const {summary} = response.body.daily.data[0]
+      if(error) {
+        callback('Unable to connect to weather service', undefined)
+      } else if (error) {
+        callback('Unable to find location', undefined)
+      } else {
+        callback(undefined, {
+          summary,
+          temperature,
+          precipProbability,
+        })
+      }
+    })
+  }
+
+  // geocode.js
+    const geocode = (address, callback) => {
+    // encodeURIComponent를 써주면 특수문자가 들어간 단어도 검색 가능해진다
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=pk.eyJ1IjoiZ29vbmdhbWphIiwiYSI6ImNqdjF6NjAwdzF6dXAzeXMwNTFsZmR6aDAifQ.LP4Fr2wam10Oa4NZp1RrAw&limit=1`
+
+    request({ url, json: true}, (error, {body}) => {
+      const {center, place_name} = body.features[0]
+      if (error) {
+        callback('Unable to connect to location services', undefined)
+      } else if (body.features.length === 0) {
+        callback('Unable to find location try another search', undefined)
+      } else {
+        callback(undefined, {
+          latitude: center[0],
+          longitude: center[1],
+          location: place_name
+        })
+      }
+    })
+  }
+  ```
+2. Use property shorthand in forecast.js and geocode.js
+3. Test your work and ensure app still works
+
+## 27. HTTP Requests without a library
+
+- request 라이브러리 없이 노드js를 이용해 http 요청을 보내고 받은 데이터를 파싱하기
+- 노드js의 HTTPS 모듈을 사용할것임
+  ```js
+  const https = require('https')
+  const url = 'https://api.darksky.net/forecast/ead5a6070fa3453c83598e172962f096/40, -75'
+
+  const request = https.request(url, (res) => {
+    let data = ''
+
+    res.on('data', (chunk) => {
+      data = data + chunk.toString()
+      console.log(chunk)
+    })
+
+    res.on('end', () => {
+      const body = JSON.parse(data)
+      console.log(body)
+    })
+    
+    request.on('error', (error) => {
+      console.log('An error', error)
+    })
+  })
+
+  request.end()
+  ```
+
+## 28. Hello Express!
+
+  ```js
+  const app = express()
+  ```
+- express()를 통해서 express의 다양한 메소드들을 사용할 수 있다.
+  
+  ```js
+    app.get('', (req, res) => {
+      res.send('hello express!')
+  })
+  ```
+- .get은 사용자들에게 다양한 라우트를 사용 가능하게 만들어주는 메소드이며 두개의 인자를 받는다. 하나는 라우트의 이름과 다른 하나는 해당 라우트를 방문했을때 실행시켜주는 콜백함수
+- 콜백함수는 두개의 인자를 받는데 하나는 요청이 담긴 객체(req)와 서버로부터 받은 응답객체(res)이다. 
+- send 메서드를 이용해 브라우저 화면에 'hello express' 렌더링 가능
+
+  ```js
+    app.listen(3000, () => {
+    console.log('Server is up on port 3000')
+  })
+  ```
+- localhost:3000에서 내용을 확인 할 수 있다. 
+- app.get을 이용해 새로운 페이지 생성가능
+  ```js
+  app.get('/help', (req, res) => {
+    res.send('Help page')
+  })
+  ```
+- 단 새로운 페이지를 만들경우 서버를 다시 시작해야한다. (nodemon 사용가능)
+
+### Challenge: Setup two new routes
+
+1. Setup an about route and render a page title
+  ```js
+  app.get('/about', (req, res) => {
+    res.send('About page')
+  })
+  ```
+2. Setup a weather route and render a page title
+  ```js
+  app.get('/weather', (req, res) => {
+    res.send('Weather page')
+  })
+  ```
+3. Test your work by visiting both in the browser
+
+## 29. Serving up HTML and JSON
+
+- express로 html 요청보내기
+  ```js
+  app.get('', (req, res) => {
+    res.send('<h1>hello express!</h1>')
+  })
+  ```
+- express로 JSON 요청보내기
+  ```js
+  app.get('/help', (req, res) => {
+    res.send({
+        name: 'Jae Hyun',
+        gender: 'male'
+      })
+    })
+  ```
+- 배열로도 가능
+  ```js
+  app.get('/help', (req, res) => {
+    res.send([{
+      name: 'Jae Hyun',
+      gender: 'male'
+    }, {
+      name: 'Hyun Jae',
+      gender: 'male'
+    }])
+  })
+  ```
+### Challenge: Update routes
+1. Setup about route to render a title with HTML
+  ```js
+  app.get('/about', (req, res) => {
+    res.send('<h1>About page</h1>')
+  })
+  ```
+2. Setup a weather route to send back JSON
+    - Object with forecast and location strings
+  ```js
+  app.get('/weather', (req, res) => {
+    res.send({
+      location: 'Incheon',
+      forecast: 'clear sky'
+    })
+  })
+  ```
+3. Test your work by visiting both in the browser
+
+## 30. Serving up Static Assets
+
+- express를 이용해서 서버에 html, css, js파일등을 제공해볼것임
+- 먼저 index.html 파일을 생성
+- app.js 파일에서...
+  ```js
+  const path = require('path')
+
+  const publicDirectoryPath = path.join(__dirname, '../public')
+  // C:\Users\AJH\Documents\udemy\The-Complete-Node.js-Developer-Course\web-server\public
+
+  // 이미지, CSS 파일 및 JavaScript 파일과 같은 정적 파일을 제공하려면 Express의 기본 제공 미들웨어 함수인 express.static을 사용
+  app.use(express.static(publicDirectoryPath))  
+  ```
+
+## 31. Serving up CSS, JS, Images and more
+
+- express에서 보여지는 html 파일에 이미지와 자바스크립트를 붙이면 됨 
+
+## 32. Dynamic Pages with Templating
+
+- 핸들바 라이브러리를 사용할것
+- 핸들바를 사용하게되면 동적인 컨텐츠를 렌더링 할 수 있으며 재사용이 가능한 코드를 만들 수 있다. 
+- npm에서 hbs를 다운받아 app.js 파일에서 express에 셋팅해주기
+  ```js
+  app.set('view engine', 'hbs')
+  ```
+- views라는 폴더를 생성하고 index.hbs를 생성한뒤에 index.html에 있던 내용들을 붙이기
+- app.js 파일과 같은 루트에 views 폴더 넣어주기
+- index.html 삭제
+- app.js에 셋팅해주기
+  ```js
+  app.get('루트 들어가는 자리',(req, res) => {
+    res.render('index')
+  })
+  ```
+- res.render를 호출하게 되면 express는 view를 가져오고 html 파일로 전환 
+- 이제 index.hbs에 있는 내용들을 동적으로 바꿔보자
+  ```js
+  app.get('루트 들어가는 자리',(req, res) => {
+    res.render('index', {
+      title: 'Weather App',
+      name: 'Jae Hyun'
+    })
+  })
+  ```
+- index.hbs 파일에서는 이렇게 받는다
+  ```js
+  <body>
+    <h1>{{title}}</h1>
+    <p>Created by {{name}}</p>
+  </body>
+  ```
