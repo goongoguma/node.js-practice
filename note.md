@@ -934,3 +934,100 @@ module.exports = {
 - 정리하자면 공통으로 쓰이는 파트들은 partials라는 폴더에 따로 넣어서 app.js에서 만든 res.render 함수에서 객체의 프로퍼티값을 받아서 사용하는것
 - 주의할 점은 res.render안에 쓰일 파일명은 views에 있는 파일의 이름과 같아야 한다. 
 - 화면에 렌더링 되야할 필요한 정보들은 app.js로부터 나와 필요에 따라 views와 partials에 있는 파일에 쓰인다.
+
+<h2 name="35">35. The Query String</h2>
+
+- 요청되는 쿼리 스트링 확인하기
+  ```js
+  app.get('/products', (req, res) => {
+    if (!req.query.search) {
+      res.send({
+        error: 'You must provide a search term'
+      })
+    }
+
+  console.log(req.query.search) // games
+    res.send({
+      products: []
+    })
+  })
+
+  // http://localhost:3000/products?search=games&rating=5 요청을 보내게 되면
+  // 콘솔에 { search: 'games', rating: '5'} 값이 나오게 된다.
+  ```
+- 하지만 요청을 보내면 
+  ```js
+  Cannot set headers after they are sent to the client
+  ```
+  라는 에러가 발생
+- 리퀘스트를 두번 보내게 될 때 발생되는 에러이다.
+- 그러므로 if문 안에 있는 res.send에 return을 붙여서 코드작동이 멈추도록 해야한다.
+  ```js
+  app.get('/products', (req, res) => {
+    if (!req.query.search) {
+      return res.send({
+        error: 'You must provide a search term'
+      })
+    }
+
+  console.log(req.query.search) // games
+    res.send({
+      products: []
+    })
+  })
+  ```
+### Challenge: Update weather endpoint to accept address
+
+1. No address? Send back an error message
+2. Address? Send back the static JSON
+  - Add address property onto JSON which returns the provided address
+  ```js
+  app.get('/weather', (req, res) => {
+    if (!req.query.address) {
+      return res.send({
+        error: 'You must provide an address'
+      })
+    }
+    console.log(req.query.address)
+    res.send({
+      forecast: 'clear sky',
+      location: 'Incheon',
+      address: req.query.address
+    })
+  })
+  ```
+3. Test /weather and /weather?address=Incheon
+
+<h2 name="36">36. Building a JSON HTTP Endpoint</h2>
+
+### Challenge: Wire up /weather
+
+1. Require geocode/forecast into app.js
+2. Use the address to geocode
+3. Use the coordinates to get forecast
+  ```js
+  app.get('/weather', (req, res) => {
+    if (!req.query.address) {
+      return res.send({
+        error: 'You must provide an address'
+      })
+    } else {
+      geocode(req.query.address, (error, {latitude, longitude, location}) => {
+        if(error) {
+          return console.log(error)
+        } 
+        forecast(latitude, longitude, (error, forecastData) => {
+          if(error) {
+            return res.send({ error })
+          }
+          res.send({
+            forecast: forecastData,
+            location,
+            address: req.query.address
+          })
+        })
+      })
+    }
+  })
+  ```
+4. Send back the real forecast and location
