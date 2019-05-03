@@ -1,4 +1,28 @@
-## 14. Removing a Note
+## Index
+
+- [14. Remove 커맨드 만들기](#14)
+- [15. List 커맨드 만들기](#15)
+- [16. find vs filter ](#16)
+- [17. 노드 디버깅해보기](#17)
+- [18. 비동기 예제](#18)
+- [19. request 라이브러리 사용해 http 요청보내기](#19)
+- [20. http 요청 보내기 연습](#20)
+- [21. 에러 방어코드 작성](#21)
+- [22. 콜백함수 예제](#22)
+- [23. geocode에 콜백함수 사용해보기](#23)
+- [24. 콜백함수 연습](#24)
+- [25. 콜백 체이닝](#25)
+- [26. 구조분해할당](#26)
+- [27. 순수 노드로 http 요청 보내보기](#27)
+- [28. express를 사용해서 화면 그려주기](#28)
+- [29. express에 html과 JSON 사용해보기](#29)
+- [30. express에 정적 컨텐츠 사용하기 1](#30)
+- [31. express에 정적 컨텐츠 사용하기 2](#31)
+- [32. 핸들바 라이브러리 사용하기](#32)
+- [33. views 경로 커스터마이징 해주기](#33)
+
+
+<h2 name="14">14. Removing a Note</h2>
 
 ### Challenge 1 : Setup command option and function
 
@@ -82,7 +106,7 @@
   }
   ```
 
-## 15. Listing Notes
+<h2 name="15">15. Listing Notes</h2>
 
 ### Challenge : Wire up list command
 
@@ -116,7 +140,7 @@ module.exports = {
 
 // $ node app.js list
 ```
-## 16. Reading a Note
+<h2 name="16">16. Reading a Note</h2>
 
 - 기존 addNote같은경우 filter 메서드를 사용해서 새로운 배열을 생성할 수도 있으나 문제는 filter 메서드의 경우 모든 리스트를 검색한다는것에 있다.
 - 예를들어 천개의 타이틀 리스트중 중간에 있는 특정 타이틀을 찾기위해 filter 메서드를 사용하게 된다면 중간 검색도중 원하는 타이틀을 찾았음에도 불구하고 멈추지 않고 끝까지 모든 타이틀을 검색한다. 
@@ -204,7 +228,7 @@ module.exports = {
   // $ node app.js read --title="List"
   ```
 
-## 17. Debugging Node.js
+<h2 name="17">17. Debugging Node.js</h2>
 
 - 노드js 디버깅
   - console.log
@@ -232,7 +256,7 @@ module.exports = {
   // chrome://inspect/#devices에서 debugger가 표시되어있는 라인까지의 내용을 Remote Target에서 확인 할 수 있다. 
   ```
 
-## 18. Asynchronous Basics
+<h2 name="18">18. Asynchronous Basics</h2>
 
   ```js
   console.log('Starting')
@@ -254,7 +278,7 @@ module.exports = {
   // 2 Second Timer
   ```
 
-## 19. Customizing HTTP Requests
+<h2 name="19">19. Customizing HTTP Requests</h2>
 
 - request 라이브러리와 darksky api를 사용해 날씨앱 만들기
 
@@ -290,7 +314,7 @@ module.exports = {
   // 저녁에 약간 흐림 시작 It is currently 50.3 degrees out. There is a 0% chance of rain.
   ```
 
-## 20. An HTTP Request Challenge
+<h2 name="20">20. An HTTP Request Challenge</h2>
 
 - Geocoding api를 이용해 받은 위도 / 경도 정보를 날씨앱에 전달해 원하는 장소의 날씨를 찾아볼 것임
 
@@ -313,7 +337,7 @@ module.exports = {
   // 34.0544 -118.2439
 4. Test your work!
 
-## 21. Handling Errors
+<h2 name="21">21. Handling Errors</h2>
 
   ```js
   const url = 'https://api.darksky.net/forecast/ead5a6070fa3453c83598e172962f096/37.8267,-122.4233?units=us&lang=ko'
@@ -352,7 +376,7 @@ module.exports = {
   ```
 4. Test by altering the search term and running the app
 
-## 22. The Callback Function
+<h2 name="22">22. The Callback Function</h2>
 
 ### Challenge: Mess around with the callback pattern
 
@@ -372,7 +396,7 @@ module.exports = {
   ```
 4. Test your work
 
-## 23. Callback Abstraction
+<h2 name="23">23. Callback Abstraction</h2>
 
 - 이번에는 함수안에서 http 요청을 하는 진짜 함수를 만들어볼것임
 - darksky api에서 받은 위도와 경도값을 geoCoding 함수에 넣어줬지만 함수가 너무 복잡하다.
@@ -438,7 +462,7 @@ module.exports = {
   location: 'Seoul, South Korea' } -->
 ```
 ```
-## 24. Callback Abstraction Challenge
+<h2 name="24">24. Callback Abstraction Challenge</h2>
 
 ### Challenge: Create a reusable function for getting the forecast
 1. Setup the "forecast" function in utils/forecast.js
@@ -473,7 +497,7 @@ module.exports = {
   })
   ```
 
-## 25. Callback Chaining
+<h2 name="25">25. Callback Chaining</h2>
 
 - app.js 파일에서 장소의 정보와 날씨 정보 둘다 가지고있다. 
   ```js
@@ -549,7 +573,7 @@ module.exports = {
   // $ node app.js Seoul
   ```
 
-## 26. Destructuring and Property Shorthand Challenge
+<h2 name="26">26. Destructuring and Property Shorthand Challenge</h2>
 
 ### Challenge: Use both destructuring and property shorthand in weather app
 
@@ -619,7 +643,7 @@ module.exports = {
 2. Use property shorthand in forecast.js and geocode.js
 3. Test your work and ensure app still works
 
-## 27. HTTP Requests without a library
+<h2 name="27">27. HTTP Requests without a library</h2>
 
 - request 라이브러리 없이 노드js를 이용해 http 요청을 보내고 받은 데이터를 파싱하기
 - 노드js의 HTTPS 모듈을 사용할것임
@@ -648,7 +672,7 @@ module.exports = {
   request.end()
   ```
 
-## 28. Hello Express!
+<h2 name="28">28. Hello Express!</h2>
 
   ```js
   const app = express()
@@ -694,7 +718,7 @@ module.exports = {
   ```
 3. Test your work by visiting both in the browser
 
-## 29. Serving up HTML and JSON
+<h2 name="29">29. Serving up HTML and JSON</h2>
 
 - express로 html 요청보내기
   ```js
@@ -742,7 +766,7 @@ module.exports = {
   ```
 3. Test your work by visiting both in the browser
 
-## 30. Serving up Static Assets
+<h2 name="30">30. Serving up Static Assets</h2>
 
 - express를 이용해서 서버에 html, css, js파일등을 제공해볼것임
 - 먼저 index.html 파일을 생성
@@ -757,11 +781,11 @@ module.exports = {
   app.use(express.static(publicDirectoryPath))  
   ```
 
-## 31. Serving up CSS, JS, Images and more
+<h2 name="31">31. Serving up CSS, JS, Images and more</h2>
 
 - express에서 보여지는 html 파일에 이미지와 자바스크립트를 붙이면 됨 
 
-## 32. Dynamic Pages with Templating
+<h2 name="32">32. Dynamic Pages with Templating</h2>
 
 - 핸들바 라이브러리를 사용할것
 - 핸들바를 사용하게되면 동적인 컨텐츠를 렌더링 할 수 있으며 재사용이 가능한 코드를 만들 수 있다. 
@@ -795,3 +819,12 @@ module.exports = {
     <p>Created by {{name}}</p>
   </body>
   ```
+
+<h2 name="33">33. Customizing the Views Directory</h2>
+
+- hbs 파일이 들어있는 폴더의 이름을 views가 아닌 다른 이름으로 하게되면 에러가 난다 (views는 express의 디폴트 장소임)
+- 하지만 views가 아닌 다른 이름을 디폴트 장소로 만들 수 있다. 
+  ```js
+  const viewsPath = path.join(__dirname, './templates') // 강의영상이랑 루트가 다르다
+  app.set('views', viewsPath)
+- 더 자세한 내용은 express 문서에서 확인이 가능 (http://expressjs.com/en/4x/api.html#app)
