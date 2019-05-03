@@ -828,3 +828,109 @@ module.exports = {
   const viewsPath = path.join(__dirname, './templates') // 강의영상이랑 루트가 다르다
   app.set('views', viewsPath)
 - 더 자세한 내용은 express 문서에서 확인이 가능 (http://expressjs.com/en/4x/api.html#app)
+
+<h2 name="34">34. Advanced Templating</h2>
+
+- 어디에서든 재사용 될 수 있는 템플릿들을 만들어보자 (헤더, 푸터 등)
+- app.js파일에 hbs 가져오기
+  ```js
+  const hbs = require('hbs')
+  ```
+- templates 폴더에 partials와 views 폴더를 생성한 뒤에 기존에 있던 파일들(about, help, index)을 views 폴더에 넣는다.
+- app.js의 viewsPath의 경로 바꿔주고 partials폴더 경로 생성해주기
+  ```js
+  const viewsPath = path.join(__dirname, './templates/views')
+  const partialsPath = path.join(__dirname, './templates/partials')
+  ```
+- 어디서든 재사용 될 수 있는 템플릿을 만들기 위해 partials 폴더를 셋팅해준다.
+  ```js
+  hbs.registerPartials(partialsPath)
+  ```
+- partials 폴더 안에 header.hbs를 만들고 작성한 뒤
+  ```js
+  <h1>Static Header.hbs Text</h1>
+  ```
+- help.hbs를 작성
+  ```js
+  <body>
+    {{>header}}
+    <h1>{{title}}</h1>
+    <p>{{helpmessage}}</p>
+  </body>
+  ```
+- 하지만 nodemon은 js 파일만 감지하기때문에 에러가 발생한다. 
+  ```js
+  The partial header could not be found
+  ```
+- 그러므로 nodemon을 js 파일과 hbs 파일이 변할때 감지하도록 커스터마이징 해줘야 한다. 
+  ```js
+  // $ nodemon app.js -e js,hbs
+  ```
+- header.hbs에 title을 만들고 링크를 만들어주게 되면 각 페이지마다 공통적으로 app.js에서 받은 각 페이지의 타이틀과 다른 페이지로 갈 수 있는 링크들이 보여지게 된다.
+  ```js
+  <h1>{{title}}</h1>
+  <div>
+    <a href="/">Weather</a>
+    <a href="/about">About</a>
+    <a href="/help">Help</a>
+  </div>
+  ```
+### Challenge: Create a partial for the footer
+
+1. Setup the template for the footer partial "Created by Some Name"
+  - partials 폴더에 footer.hbs를 생성한뒤 내용을 적는다
+2. Render the partial at the bottom of all three pages
+  - views 폴더에 있는 각각의 hbs 파일에 footer를 넣어준다
+  ```js
+  {{>footer}}
+  ```
+3. Test your work by visiting all three pages
+
+<h2 name="34">34. 404 Pages</h2>
+
+- 유저가 만들어지지 않은 페이지로 이동 할 경우 보여줄 404페이지를 만들어볼것임
+  ```js
+  // app.js
+  // *의 뜻 -> 그동안 매치 안된 url을 매치시킨다는것 
+  // 라우트는 작성된 순서대로 작동. 에러 라우트는 마지막에 셋업되어야 한다.
+  app.get('*', (req, res) => {
+    res.send('My 404 page')
+  })
+  ```
+- 이것은 또한 이렇게 사용가능
+  ```js
+    app.get('/help/*', (req, res) => {
+    res.send('Help article not found')
+  })
+  
+  // localhost:3000/help/helpMe -> Help article not found
+  ```
+### Challenge: Create and render a 404 page with handlebars
+
+1. Setup the template to render the header and footer
+  ```js
+  // 404.hbs
+  <body>
+    {{>header}}
+      <p>{{errorMessage}}</p>
+    {{>footer}}
+  </body>
+  ```
+2. Setup the template to render an error message in a paragraph
+3. Render the template for both 404 routes
+  - Page not found.
+  - Help article not found
+  ```js
+    app.get('*', (req, res) => {
+    res.render('404', {
+      title: '404',
+      name: 'Jae Hyun',
+      errorMessage: 'Page not found'
+    })
+  })
+  ```
+4. Test your work. Visit /what and /help/units
+
+- 정리하자면 공통으로 쓰이는 파트들은 partials라는 폴더에 따로 넣어서 app.js에서 만든 res.render 함수에서 객체의 프로퍼티값을 받아서 사용하는것
+- 주의할 점은 res.render안에 쓰일 파일명은 views에 있는 파일의 이름과 같아야 한다. 
+- 화면에 렌더링 되야할 필요한 정보들은 app.js로부터 나와 필요에 따라 views와 partials에 있는 파일에 쓰인다.
