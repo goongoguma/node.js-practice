@@ -20,6 +20,14 @@
 - [31. express에 정적 컨텐츠 사용하기 2](#31)
 - [32. 핸들바 라이브러리 사용하기](#32)
 - [33. views 경로 커스터마이징 해주기](#33)
+- [34. 템플릿 설정](#34)
+- [35. 에러페이지 만들기](#35)
+- [36. 쿼리 스트링 인식하기](#36)
+- [37. geocode와 forecast JSON HTTP Endpoint에 연결시키기](#37)
+- [38. Fetch를 이용해 HTTP Requests 보내기](#38)
+- [39. 날씨 검색 폼 만들어 주기](#39)
+- [40. 검색정보 화면에 렌더링해주기](#40)
+
 
 <h2 name="14">14. Removing a Note</h2>
 
@@ -766,17 +774,17 @@ const app = express();
     res.send('hello express!');
   });
   ```
-
 - .get은 사용자들에게 다양한 라우트를 사용 가능하게 만들어주는 메소드이며 두개의 인자를 받는다. 하나는 라우트의 이름과 다른 하나는 해당 라우트를 방문했을때 실행시켜주는 콜백함수
 - 콜백함수는 두개의 인자를 받는데 하나는 요청이 담긴 객체(req)와 서버로부터 받은 응답객체(res)이다.
 - send 메서드를 이용해 브라우저 화면에 'hello express' 렌더링 가능
+- res.send() allows us to send something back to the requester
 
   ```js
   app.listen(3000, () => {
     console.log('Server is up on port 3000');
   });
   ```
-
+- app.listen은 서버를 실행시킨다.
 - localhost:3000에서 내용을 확인 할 수 있다.
 - app.get을 이용해 새로운 페이지 생성가능
   ```js
@@ -991,7 +999,7 @@ app.get('/weather', (req, res) => {
 
 3. Test your work by visiting all three pages
 
-<h2 name="34">34. 404 Pages</h2>
+<h2 name="35">35. 404 Pages</h2>
 
 - 유저가 만들어지지 않은 페이지로 이동 할 경우 보여줄 404페이지를 만들어볼것임
   ```js
@@ -1047,7 +1055,7 @@ app.get('*', (req, res) => {
 - 주의할 점은 res.render안에 쓰일 파일명은 views에 있는 파일의 이름과 같아야 한다.
 - 화면에 렌더링 되야할 필요한 정보들은 app.js로부터 나와 필요에 따라 views와 partials에 있는 파일에 쓰인다.
 
-<h2 name="35">35. The Query String</h2>
+<h2 name="36">36. The Query String</h2>
 
 - 요청되는 쿼리 스트링 확인하기
 
@@ -1117,7 +1125,7 @@ app.get('/weather', (req, res) => {
 
 3. Test /weather and /weather?address=Incheon
 
-<h2 name="36">36. Building a JSON HTTP Endpoint</h2>
+<h2 name="37">37. Building a JSON HTTP Endpoint</h2>
 
 ### Challenge: Wire up /weather
 
@@ -1153,7 +1161,7 @@ app.get('/weather', (req, res) => {
 
 4. Send back the real forecast and location
 
-<h2 name="37">37. Browser HTTP Requests with Fetch</h2>
+<h2 name="38">38. Browser HTTP Requests with Fetch</h2>
 
 - 클라이언트 사이드에서 데이터 요청보내기 위해 src 폴더안의 views 폴더안에 있는 index.hbs와 연결되어있는 app.js 파일을 사용할것
 - app.js 파일안에 fetch api를 사용해서 데이터를 가져올것임
@@ -1177,7 +1185,7 @@ app.get('/weather', (req, res) => {
      });
    });
    ```
-   <h2 name="38">38. Creating a Search Form</h2>
+<h2 name="39">39. Creating a Search Form</h2>
 
 - 메인 index.hbs에서 날씨 검색을 할 수 있는 검색창을 만들어 주기 위해 form을 사용할것임
 
@@ -1233,3 +1241,62 @@ app.get('/weather', (req, res) => {
   });
   ```
 3. Submit the form with a valid and invalid value to test
+
+<h2 name="40">40. Wiring up the User Interface</h2>
+
+- 그동안 console.log를 통해 나왔던 메세지들을 화면에 출력하게 만들것.
+- index.hbs에서 p 태그를 두개 만든 뒤, 하나는 에러가 날 경우 또 다른 하나는 데이터를 받아왔을 때의 경우 화면에 표시하게 만들것.
+- 구분을 위해 각각 고유의 id를 갖게 만든다.
+  ```js
+  <div class="main-content">
+    {{>header}}
+    <p>Use this site to get your weather</p>
+    <form>
+      <input placeholder="Location">
+      <button>Search</button>
+    </form>
+
+    <p id="message-1"></p>
+    <p id="message-2"></p>
+  </div>
+  ```
+- app.js에서 p 태그들을 인식할 수 있게 querySelector를 써준다.
+  ```js
+  const messageOne = document.querySelector('#message-1')
+  const messageTwo = document.querySelector('#message-2')
+  ```
+
+### Challenge: Render content to paragraphs
+
+1. Select the second message p from JS
+2. Just before fetch, render loading message and empty p
+3. If error, render error
+4. If no error, render location and forecast
+5. Test your work! Search fro errors and for valid locations
+  ```js
+  weatherForm.addEventListener('submit', e => {
+    e.preventDefault();
+
+    const location = search.value;
+
+    messageTwo.textContent = 'LOADING...'
+
+    fetch(`http://localhost:3000/weather?address=${location}`).then(res => {
+      res.json().then(data => {
+        if (!data) {
+          messageOne.textContent = 'error occured!' // error는 작동하지 않는다(버그)
+        } else {
+          const {summary, temperature} = data.forecast
+          messageOne.textContent = data.location
+          messageTwo.textContent = `날씨: ${summary}, 온도: ${temperature}`
+        }
+      });
+    });
+  });
+  ```
+<h2 name="41">41. MongoDB and NoSQL Databases</h2>
+
+- 몽고DB를 이용해서 유저 데이터를 저장해보자
+- 몽고DB는 NoSQL
+- SQL은 테이블로 데이터를 정리하는 반면에 NoSQL은 컬랙션으로 데이터를 정리한다. (컬랙션은 JSON과 비슷함)
+- note-img 폴더의 SQLvsNoSQL 이미지 참조
