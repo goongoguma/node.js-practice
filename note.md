@@ -1272,7 +1272,7 @@ app.get('/weather', (req, res) => {
 2. Just before fetch, render loading message and empty p
 3. If error, render error
 4. If no error, render location and forecast
-5. Test your work! Search fro errors and for valid locations
+5. Test your work! Search for errors and for valid locations
   ```js
   weatherForm.addEventListener('submit', e => {
     e.preventDefault();
@@ -1298,5 +1298,280 @@ app.get('/weather', (req, res) => {
 
 - 몽고DB를 이용해서 유저 데이터를 저장해보자
 - 몽고DB는 NoSQL
-- SQL은 테이블로 데이터를 정리하는 반면에 NoSQL은 컬랙션으로 데이터를 정리한다. (컬랙션은 JSON과 비슷함)
+- SQL은 테이블로 데이터를 정리하는 반면에 NoSQL은 컬랙션으로 데이터를 정리한다. (컬랙션은 JSON형태)
 - note-img 폴더의 SQLvsNoSQL 이미지 참조
+
+<h2 name="42">42. Installing MongoDB on Windows</h2>
+
+- 몽고DB 압축 파일을 받은 뒤 압축 파일 안에 있는 내용들을 로컬 디스크의 사용자 폴더에 넣어준다. 
+- 몽고DB 폴더와 함께 몽고DB의 데이터를 저장할 mongoDB-data 폴더를 만들어 준다. 
+- cmd를 사용해 mongoDB 폴더가 위치해 있는 폴더의 bin 폴더에서 해당 커맨드를 실행시킨다. 
+  ```js
+  mongod.exe --dbpath=/Users/AJH/mongoDB-data
+  ```
+- 해당 커맨드를 실행시키면 이런 결과가 나온다.
+  ```js
+  2019-05-21T15:10:14.539+0900 I NETWORK  [initandlisten] waiting for connections on port 27017
+  2019-05-21T15:10:14.539+0900 I STORAGE  [LogicalSessionCacheRefresh] createCollection: config.system.sessions with generated UUID: 5b61136f-4797-4a39-98a4-758ddedc906c
+  2019-05-21T15:10:14.551+0900 I INDEX    [LogicalSessionCacheRefresh] build index on: config.system.sessions properties: { v: 2, key: { lastUse: 1 }, name: "lsidTTLIndex", ns: "config.system.sessions", expireAfterSeconds: 1800 }
+  2019-05-21T15:10:14.551+0900 I INDEX    [LogicalSessionCacheRefresh]     building index using bulk method; build may temporarily use up to 500 megabytes of RAM
+  2019-05-21T15:10:14.554+0900 I INDEX    [LogicalSessionCacheRefresh] build index done.  scanned 0 total records. 0 secs
+  ```
+- port 27017은 mongoDB의 디폴트 포트다. 즉 서버가 포트번호 27017에서 실행되고 있다는 뜻이며 연결을 기다리고 있다는 뜻이다. 
+
+<h2 name="43">43. Installing Database GUI Viewer</h2>
+
+- MongoDB의 사용을 더욱 편하게 해주는 Robo 3T를 설치할 것.
+- https://robomongo.org/
+- 자세한 설치법은 인강에서 
+
+<h2 name="44">44. Connecting and Inserting Documents</h2>
+
+- Robo 3T를 이용해 데이터에 문서 넣어보기 
+- MongoDB native driver 설치 및 사용하기 
+- 새로운 폴더(task-manager) 생성한뒤 npm init 해주고 npm으로 mongodb 설치해주기
+- MongoDB에 데이터 넣어주기
+  ```js
+  // CRUD
+  // mongodb comes back as an object
+  const mongodb = require('mongodb');
+  // MongoClient gives us an access to a function necessary to connect to the database
+  const MongoClient = mongodb.MongoClient;
+
+  // There are all info we need to connect to our database
+  const connectionURL = 'mongodb://127.0.0.1:27017';
+  const databaseName = 'task-manager';
+
+  // Let's connect to the server
+  // useNewUrlParser: deprecate original url and set new url
+  MongoClient.connect(connectionURL, { useNewUrlParser: true }, (error, client) => {
+    if (error) {
+      // stop the funtion execution
+      return console.log('Unable to connect to database')
+    }
+    // client.db gets an argument that you want to manipulate 
+    const db = client.db(databaseName)
+
+    // insert a single document into a user's collection
+    // it expects the name of collection you are trying to manipulate
+    // insertOne expects an argument object that you want to insert
+    db.collection('users').insertOne({
+      name: 'Jae Hyun',
+      gender: 'male'
+    })
+  });
+  ```
+
+<h2 name="45">45. Inserting Documents</h2>
+
+- 데이터에 document 넣어주기
+- insertOne 함수는 비동기 그러므로 insertOne 함수의 결과를 알기위해서는 콜백 함수를 사용 
+  ```js
+  db.collection('users').insertOne({
+    name: 'Jae Hyun',
+    gender: 'male'
+  }, (error, result) => {
+      if (error) {
+        return console.log('Unable to insert user')
+      }
+      // ops는 데이터에 있는 모든 document를 가지고있다. 
+      console.log(result.ops)
+  })
+    // 더 많은 정보는 http://mongodb.github.io/node-mongodb-native/3.1/api/Collection.html#insertOne 여기서
+    // $ node mongodb.js
+  // [ { name: 'Jae Hyun', gender: 'male', _id: 5cec9bebae9d350bf454007b } ]
+  ```
+- users 데이터에 여러 document 넣는 방법
+  ```js
+    db.collection('users').insertMany([
+      {
+        name: 'Jen',
+        gender: 'female'
+      }, 
+      {
+        name: 'Gunther',
+        gender: 'male'
+      }
+    ], (error, result) => {
+      if (error) {
+        return console.log('Unable to insert documents')
+      }
+      console.log(result.ops)
+    })
+  });
+  ```
+- Goal: Insert 3 tasks into a new tasks collection
+  1. Use insertMany to insert three documents
+    - description (string), completed (boolean)
+  2. Setup the callback to handle error or print ops
+  3. Run the script
+  4. Refresh the database in Robo 3t and view data in tasks collection
+  ```js
+    db.collection('tasks').insertMany([
+      {
+        description: 'Wash dishes',
+        completed: true
+      }, 
+      {
+        description: 'Clean the house',
+        completed: false
+      },
+      {
+        description: 'Renew inspection',
+        completed: true
+      }
+    ], (error, result) => {
+      if(error) {
+        return console.log('Unable to insert tasks')
+      } 
+      console.log(result.ops)
+    })
+  });
+  ```
+
+<h2 name="46">46. The ObjectID</h2>
+
+- 몽고DB에서 ID는 GUID로 불린다.
+- Globally Unique Identifiers
+- 새로운 아이디 ID 생성하는 법
+  ```js
+  const ObjectID = mongodb.ObjectID;
+  const id = new ObjectID();
+  console.log(id) // 5cecb82f598b620338e33a43 (새로운 아이디 생성)
+  console.log(id.getTimestamp()) // 2019-05-28T04:30:30.000Z
+  ```
+- ObjectID에 대한 설명 : https://docs.mongodb.com/manual/reference/method/ObjectId/
+- 새로운 아이디를 몽고DB 데이터에 넣을 수 있다.
+  ```js
+  db.collection('users').insertOne({
+    _id: id,
+    name: 'Hyun-A',
+    gender: 'female'
+  }, (error, result) => {
+      if (error) {
+        return console.log('Unable to insert user')
+      }
+      console.log(result.ops)
+      // [ { _id: 5cecb9ed13baeb1b0cb5bd9c,
+      //  name: 'Hyun-A',
+      //  gender: 'female' } ]
+  })
+  ```
+
+<h2 name="47">47. Querying Documents</h2>
+
+- 데이터에서 이름값이 Jen인 document 찾기
+  ```js
+  db.collection('users').findOne({ name:'Jen' }, (error, user) => {
+    if (error) {
+      return console.log('Unable to fetch')
+    }
+    console.log(user)
+    // { _id: 5cecb1095eb4f429bce35fa3, name: 'Jen', gender: 'female' }
+  })
+  ```
+- 만약 데이터에 없는 값을 찾는다면 null을 반환한다. 
+- 아이디를 이용해 찾고싶다면...
+  ```js
+   db.collection('users').findOne({ _id: new ObjectID('5cec9bebae9d350bf454007b') }, (error, user) => {
+    if (error) {
+      return console.log('Unable to fetch')
+    }
+
+    console.log(user)
+  })
+  ```
+- 데이터에서 gender: male인 document들을 배열 형태로 가져오고 싶을 때
+  ```js
+   db.collection('users').find({ gender: 'male'}).count((error, count) => {
+    console.log(count)
+  })
+  // toArray 대신 count를 사용하면 document의 갯수를 가져온다
+  ```
+- Goal: Use find and findOne with tasks
+  1.  Use findOne to fetch the last task by its id (print doc to console)
+  2.  Use find to fetch all tasks that are not completed (print docs to console)
+  3.  Test your work!
+  ```js
+  db.collection('tasks').findOne({_id: new ObjectID('5cecb4a86eb2b62f4419d58d')}, (error, task) => {
+    console.log(task)
+  })
+
+  // { _id: 5cecb4a86eb2b62f4419d58d,
+  // description: 'Renew inspection',
+  // completed: true }
+
+  db.collection('tasks').find({ completed: false}).toArray((error, task) => {
+    console.log(task)
+  })
+
+  //[ { _id: 5cecb4a86eb2b62f4419d58c,
+  //  description: 'Clean the house',
+  //  completed: false } ]
+  ```
+
+<h2 name="48">48. Updating Documents</h2>
+
+- 데이터안의 document 업데이트 하기
+  ```js
+     db.collection('users').updateOne({
+    _id: new ObjectID('5cecb1095eb4f429bce35fa4')
+  }, {
+    $set: {
+      name: 'Mike'
+    }
+  }).then((result) => {
+    console.log(result)
+  }).catch((error) => {
+    console.log(error)
+  })
+
+  // 해당 아이디를 가지고 있는 document의 이름값이 Gunther에서 Mike로 바뀜 
+  // $set과 같은 연산자들은 https://docs.mongodb.com/manual/reference/operator/update/ 참조
+  ```
+- Goal: Use updateMany to complete all tasks
+1. Check the documentation for updateMany
+2. Setup the call with the query and the updates
+3. Use promise methods to setup the success/error handlers
+4. Test your work
+  ```js
+  db.collection('tasks').updateMany({
+    completed: false
+  }, {
+    $set: {
+      completed: true
+    }
+  }).then((result) => {
+    console.log(result)
+  }).catch((error) => {
+    console.log(error)
+  })
+  ```
+
+<h2 name="49">49. Deleting Documents</h2>
+
+- deleteOne과 deleteMany를 사용해 document를 삭제하기 
+- 성별이 남자인 document를 삭제하기
+  ```js
+  db.collection('users').deleteMany({
+    gender: 'male'
+  }).then(result => {
+    console.log(result)
+  }).catch(error => {
+    console.log(error)
+  })
+  ```
+- Goal: Use deleteOne to remove a task
+1. Grab the description for the task you want to remove
+2. Setup the call with the query
+3. Use promise methods to setup the success/error handlers
+4. Test your work
+  ```js
+  db.collection('tasks').deleteOne({
+    description: 'Wash dishes'
+  }).then(result => {
+    console.log(result)
+  }).catch(error => {
+    console.log(error)
+  })
+  ```
