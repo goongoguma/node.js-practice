@@ -1639,7 +1639,7 @@ app.get('/weather', (req, res) => {
   // 만약 age 필드를 숫자가 아닌 문자열로 넣었을 경우 validation 에러가 발생함
   ```
 
-<h2 name="51">Creating a Mongoose Model</h2>
+<h2 name="51">51. Creating a Mongoose Model</h2>
 
 - Goal: Create a model for tasks
 
@@ -1665,3 +1665,212 @@ app.get('/weather', (req, res) => {
   }).catch(error =>
     console.log(error))
   ```
+
+<h2 name="52">52. Data Validation and Sanitization 1</h2>
+
+- 몽구스 모델을 정의할 때 더욱 많은 validation 옵션을 넣어줄 수도 있다.
+  ```js
+  const User = mongoose.model('User', {
+    name: {
+      type: String,
+      required: true
+    },
+    age: {
+      type: Number
+    }
+  })
+  // required: true 속성을 가진 name 필드가 없으므로 ValidatorError: Path `name` is required. 에러가 콘솔창에 뜬다
+  // 자세한 내용은 https://mongoosejs.com/docs/validation.html 
+  ```
+- Validation을 커스텀으로 만들어주기
+  ```js
+  const User = mongoose.model('User', {
+    name: {
+      type: String,
+      required: true
+    },
+    age: {
+      type: Number,
+      validate(value) {
+        if (value < 0) {
+          // 입력된 나이값이 0 이하면 validation 오류 발생 
+          throw new Error('Age must be positive number')
+        }
+      }
+    }
+  })
+  ```
+- npm의 validator 라이브러리를 이용 할 수도 있음 
+  ```js
+  const validator = require('validator');
+
+  const User = mongoose.model('User', {
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    email: {
+      type: String,
+      required: true,
+      validate(value) {
+        if (!validator.isEmail(value)) {
+          throw new Error('Email is invalid')
+        }
+      }
+    },
+    age: {
+      type: Number,
+      validate(value) {
+        if (value < 0) {
+          throw new Error('Age must be positive number')
+        }
+      }
+    }
+  })
+
+  const me = new User({
+    name: 'Mike',
+    email: 'mike@googl'
+  })
+  // validation error occurs
+  ```
+- 데이터 sanitization
+  ```js
+  email: {
+    type: String,
+    required: true,
+    // 빈칸 없애기
+    trim: true, 
+    // 모든 알파벳은 소문자로 자동설정
+    lowercase: true,
+    validate(value) {
+      if (!validator.isEmail(value)) {
+        throw new Error('Email is invalid')
+      }
+    }
+  },
+  age: {
+    type: Number,
+    // 초기값 0
+    default: 0,
+    validate(value) {
+      if (value < 0) {
+        throw new Error('Age must be positive number')
+      }
+    }
+  }
+  ```
+
+<h2 name="53">53. Data Validation and Sanitization 2</h2>
+
+- Goal: Add a password field to User
+
+1. Setup the field as a required string
+2. Ensure the length is greater than 6
+3. Trim the password
+4. Ensure that password does not contain 'password'
+5. Test your work!
+  ```js
+   password: {
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 7,
+    validate(value) {
+      if (value.toLowerCase().includes('password')) {
+        throw new Error('Do not set password as a password')
+      }
+    }
+  }
+
+  const me = new User({
+    name: '   Jen',
+    email: 'JEN@GOOGLE.COM',
+    password: 'qweq1221asvvb'
+  })
+  ```
+
+- Goal: Add validation and sanitization to task
+
+1. Trim the description and make it required
+2. Make completed optional and default it to false
+3. Test your work with and without errors
+
+  ```js
+  const Task = mongoose.model('tasks', {
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    }
+  })
+
+  const todo = new Task({
+    description: '    설거지하기',
+    completed: true
+  })
+
+  todo.save().then(() => {
+    console.log(todo)
+  }).catch(error =>
+    console.log(error))
+  ```
+
+<h2 name="54">54. Structuring a REST API</h2>
+
+- THE REST API
+- Representational State Transfer - Application Programming Interface
+- The Task Resource -> Create: POST /tasks
+                    -> Read: GET /tasks
+                    -> Read: GET /tasks/:id
+                    -> Update: PATCH /tasks/:id
+                    -> Delete: DELETE /tasks/:id
+
+<h2 name="55">55. Resource Creation Endpoints 1</h2>
+
+- task-manager 안에 src 폴더를 만든 뒤 그 안에다가 index.js 파일 생성. index.js 파일 생성
+- package.json 파일에서 명령어 설정
+- index.js 파일 안에서 기본적인 express 셋팅해주기
+  ```js
+  const express = require('express');
+
+  const app = express();
+
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log('Server is up on port' + port)
+  })
+  ```
+- 포트 3000에 접속하면 Cannot GET /이 뜬다. 왜냐하면 라우터 셋팅을 안해주었기 때문
+- 하지만 포스트를 만들것이기 때문에(create) app.post를 사용할 것.
+  ```js
+  app.post('/users', (req, res) => {
+    res.send('testing!')
+  })
+  ```
+- 포스트맨에서 POST 메소드를 이용해 localhost:3000/users에 요청을 보내면 testing!이 온다. 
+- Body에서도 JSON형태로 아래처럼 요청을 보내도 답이온다.
+  ```json
+  {
+    "name": "Jay",
+    "email": "jay@example.com",
+    "password": "qwerqwer"
+  }
+  ```
+- 포스트맨에서 요청보낸 JSON을 확인해보자
+  ```js
+  // app.use(express.json())는 요청이 들어온 JSON 파일을 파싱하여 자동적으로 객체로 전환시킨다 
+  app.use(express.json())
+
+  app.post('/users', (req, res) => {
+    // app.use에서 객체로 전환된 요청을 확인할 수 있다. 
+    console.log(req.body) // { name: 'Jay', email: 'jay@example.com', password: 'qwerqwer' }
+    res.send('testing!')
+  })
+  ```
+-
