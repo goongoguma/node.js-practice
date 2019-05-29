@@ -1873,4 +1873,22 @@ app.get('/weather', (req, res) => {
     res.send('testing!')
   })
   ```
--
+- models라는 폴더를 만들고 users 파일을 만든 뒤, 몽고DB에 만들었던 users 모델들을 복붙
+- index.js파일에서 user 모델을 import한 뒤에 app.post와 연결시켜주기
+  ```js
+  app.use(express.json())
+
+  app.post('/users', (req, res) => {
+    // import한 모델에 포스트맨에서 작성된 데이터값을 넣는다. 
+    const user = new User(req.body)
+    
+    user.save().then(() => {
+      res.send(user)
+    }).catch((error) => {
+      // status값을 400으로 설정
+      // 꼭 res.send보다 먼저 나와야한다
+      res.status(400).send(error)
+    })
+  })
+  ```
+- https://httpstatuses.com/ 에서 다양한 status code 확인가능
