@@ -1446,7 +1446,7 @@ app.get('/weather', (req, res) => {
   const ObjectID = mongodb.ObjectID;
   const id = new ObjectID();
   console.log(id) // 5cecb82f598b620338e33a43 (새로운 아이디 생성)
-  console.log(id.getTimestamp()) // 2019-05-28T04:30:30.000Z
+  console.log(id.getTimestamp()) // 2019-05-28T04:30:30.000Z (아이디가 만들어진 시간)
   ```
 - ObjectID에 대한 설명 : https://docs.mongodb.com/manual/reference/method/ObjectId/
 - 새로운 아이디를 몽고DB 데이터에 넣을 수 있다.
@@ -1485,14 +1485,13 @@ app.get('/weather', (req, res) => {
     if (error) {
       return console.log('Unable to fetch')
     }
-
     console.log(user)
   })
   ```
 - 데이터에서 gender: male인 document들을 배열 형태로 가져오고 싶을 때
   ```js
-   db.collection('users').find({ gender: 'male'}).count((error, count) => {
-    console.log(count)
+   db.collection('users').find({ gender: 'male'}).toArray((error, users) => {
+    console.log(users)
   })
   // toArray 대신 count를 사용하면 document의 갯수를 가져온다
   ```
@@ -1582,4 +1581,87 @@ app.get('/weather', (req, res) => {
   }).catch(error => {
     console.log(error)
   })
+  ```
+
+<h2 name="50">50. Setting up Mongoose</h2>
+
+- 몽고DB에서 CRUD를 사용하는 방법은 알지만 document의 유효성 판단이나 필드의 기대값 설정, 다른 유저가 모르는 private task 만들기 등은 몽구스를 사용한다. 
+- npm i mongoose
+- 몽구스는 몽고DB의 모듈을 사용하기 때문에 구조는 비슷하다.
+  ```js
+  const mongoose = require('mongoose');
+  // 몽고DB의 connect 함수와 다르게 데이터의 이름을 url의 뒤에다가 붙인다. 
+  mongoose.connect('mongodb://127.0.0.1:27017/task-manager-api', {
+    useNewUrlParser: true,
+    // useCreateIndex는 몽구스가 몽고DB와 일할때 인덱스를 생성함으로써 유저가 필요한 데이터의 인덱스에 접근시킨다. 
+    useCreateIndex: true
+  });
+  ```
+- 몽구스의 모델 정의하기
+  ```js
+  // 첫번째 인수 : 모델 이름 설정 
+  // 두번째 인수 : 모델 필드의 이름과 타입 설정 하지만 더 많은 설정들이 가능
+  const User = mongoose.model('User', {
+    name: {
+      type: String
+    },
+    age: {
+      type: Number
+    }
+  })
+  ```
+- 모델 인스턴스 만들기
+  ```js
+  const me = new User({
+    name: 'Vladimir',
+    age: 500
+  })
+  ```
+- 모델 인스턴스를 데이터에 저장하기
+  ```js
+  me.save().then((me) => {
+    console.log(me)
+  }).catch((error) => {
+    console.log('Error!', error)
+  })
+  ```
+- 이렇게 실행을 하게되면...
+  ```js
+  $ node src/db/mongoose.js
+
+  { _id: 5cede6239f02ce30740cb7f0,
+    name: 'Vladimir',
+    age: 500,
+    // __v는 다큐먼트의 버전이라는 의미 
+    __v: 0 }
+  
+  // Robo 3T에서 task-manaer-api라는 데이터와 그 안에 인스턴스가 생성된 것을 확인 가능
+  // 만약 age 필드를 숫자가 아닌 문자열로 넣었을 경우 validation 에러가 발생함
+  ```
+
+<h2 name="51">Creating a Mongoose Model</h2>
+
+- Goal: Create a model for tasks
+
+1. Define the model with description and completed fields
+2. Create a new instance of the model
+3. Save the model to the database
+4. Test your work!
+  ```js
+  const Task = mongoose.model('tasks', {
+    description: {
+      type: String
+    },
+    completed: {
+      type: Boolean
+    }
+  })
+  const todo = new Task({
+    description: '집청소하기',
+    completed: false
+  })
+  todo.save().then(todo => {
+    console.log(todo)
+  }).catch(error =>
+    console.log(error))
   ```
