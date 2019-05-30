@@ -36,6 +36,13 @@
 - [47. 필요한 다큐먼트 찾기](#47)
 - [48. 다큐먼트 수정](#48)
 - [49. 다큐먼트 삭제](#49)
+- [50. 몽구스 설치 및 사용하기](#50)
+- [51. 몽구스로 모델 만들기](#51)
+- [52. 몽구스로 validation 및 sanitization하기 1](#52)
+- [53. 몽구스로 validation 및 sanitization하기 2](#53)
+- [54. REST API 구조](#54)
+- [55. 포스트맨에서 보낸 요청을 DB에 저장하기](#55)
+
 
 <h2 name="14">14. Removing a Note</h2>
 
@@ -1593,7 +1600,7 @@ app.get('/weather', (req, res) => {
   // 몽고DB의 connect 함수와 다르게 데이터의 이름을 url의 뒤에다가 붙인다. 
   mongoose.connect('mongodb://127.0.0.1:27017/task-manager-api', {
     useNewUrlParser: true,
-    // useCreateIndex는 몽구스가 몽고DB와 일할때 인덱스를 생성함으로써 유저가 필요한 데이터의 인덱스에 접근시킨다. 
+    // useCreateIndex는 몽구스가 몽고DB와 일할때 인덱스를 생성함으로써 유저가 필요한 데이터의 인덱스에 빠르게 접근시킨다. 
     useCreateIndex: true
   });
   ```
@@ -1635,7 +1642,7 @@ app.get('/weather', (req, res) => {
     // __v는 다큐먼트의 버전이라는 의미 
     __v: 0 }
   
-  // Robo 3T에서 task-manaer-api라는 데이터와 그 안에 인스턴스가 생성된 것을 확인 가능
+  // Robo 3T에서 task-manager-api라는 데이터와 그 안에 인스턴스가 생성된 것을 확인 가능
   // 만약 age 필드를 숫자가 아닌 문자열로 넣었을 경우 validation 에러가 발생함
   ```
 
@@ -1833,7 +1840,7 @@ app.get('/weather', (req, res) => {
 
 <h2 name="55">55. Resource Creation Endpoints 1</h2>
 
-- task-manager 안에 src 폴더를 만든 뒤 그 안에다가 index.js 파일 생성. index.js 파일 생성
+- task-manager 안에 src 폴더를 만든 뒤 그 안에다가 index.js 파일 생성.
 - package.json 파일에서 명령어 설정
 - index.js 파일 안에서 기본적인 express 셋팅해주기
   ```js
@@ -1842,6 +1849,7 @@ app.get('/weather', (req, res) => {
   const app = express();
 
   const port = process.env.PORT || 3000;
+
   app.listen(port, () => {
     console.log('Server is up on port' + port)
   })
@@ -1873,7 +1881,7 @@ app.get('/weather', (req, res) => {
     res.send('testing!')
   })
   ```
-- models라는 폴더를 만들고 users 파일을 만든 뒤, 몽고DB에 만들었던 users 모델들을 복붙
+- models라는 폴더를 만들고 user 파일을 만든 뒤, 몽고DB에 만들었던 users 모델들을 복붙
 - index.js파일에서 user 모델을 import한 뒤에 app.post와 연결시켜주기
   ```js
   app.use(express.json())
@@ -1892,3 +1900,326 @@ app.get('/weather', (req, res) => {
   })
   ```
 - https://httpstatuses.com/ 에서 다양한 status code 확인가능
+
+<h2 name="56">56. Resource Creation Endpoints 2</h2>
+
+- Goal: Setup the task creation endpoint
+
+1. Create a separate file for the task model (load it into index.js)
+2. Create the task creation endpoint (handle success and error)
+3. Test the endpoint from postman with good and bad data
+
+  ```js
+  // task.js
+  const mongoose = require('mongoose');
+
+  const Task = mongoose.model('tasks', {
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    }
+  })
+
+  module.exports = Task
+  ```
+  ```js
+  // index.js
+  const Task = require('./models/task');
+
+  app.post('/tasks', (req, res) => {
+
+    const task = new Task(req.body);
+
+    task.save().then(() => {
+      res.status(201).send(task)
+    }).catch((error) => {
+      res.status(400).send(error)
+    })
+  })
+  ```
+  ```js
+  // Postman
+  {
+    "description": "washing dishes"
+  }
+
+  // result
+  {
+    "completed": false,
+    "_id": "5cef366a480bba1f9427ff90",
+    "description": "washing dishes",
+    "__v": 0
+  }
+  ```
+
+<h2 name="57">57. Resource Reading Endpoints 1</h2>
+
+- 몽고DB에서 했던것과 같이 몽구스를 이용해서 특정 속성을 DB에서 찾아 해당 데이터를 가져오거나 여러 데이터를 가져오는 것을 해볼것임
+- https://mongoosejs.com/docs/queries.html
+- find를 사용해서 전체 다큐먼트들 가져오기
+  ```js
+  app.get('/users', (req, res) => {
+    User.find({}).then(users => {
+      res.send(users)
+    }).catch((error) => {
+      res.send(error)
+    })
+  })
+  ```
+- findById를 사용해서 해당 아이디를 가지고 있는 다큐먼트 가져오기
+  ```js
+  app.get('/users/:id', (req, res) => {
+    const _id = req.params.id
+    // params는 라우트 파라메터를 담고있다 
+    User.findById(_id).then(user => {
+      if(!user) {
+        return res.status(404).send()
+      }
+      res.send(user)
+    }).catch(error => {
+      res.status(500).send()
+    })
+  })
+  ```
+
+<h2 name="58">58. Resource Reading Endpoints 2</h2>
+
+- Goal: Setup the task reading endpoints
+
+1. Create an endpoint for fetching all tasks
+2. Create an endpoint for fetching a task by its id
+3. Setup new requests in Postman and test your work
+  ```js
+  app.get('/tasks', (req, res) => {
+    Task.find({}).then(task => {
+      res.send(task)
+    }).catch(error => {
+      res.status(500).send(error)
+    })
+  })
+
+  app.get('/tasks/:id', (req, res) => {
+    const _id = req.params.id
+    Task.findById(_id).then(task => {
+      if(!task) {
+        return res.status(404).send()
+      }
+      res.send(task)
+    }).catch(error => {
+      res.status(500).send()
+    })
+  })
+  ```
+
+<h2 name="59">Integrating Async/Await</h2>
+
+- Async와 Await을 라우트에 사용해보자
+  ```js
+  app.post('/users', async (req, res) => {
+    const user = new User(req.body);
+     // user.save().then(() => {
+    //   res.status(201).send(user)
+    // }).catch((error) => {
+    //   res.status(400).send(error)
+    // })
+    try {
+      await user.save();
+      res.status(201).send(user)
+    } catch(error) {
+      res.status(400).send(error)
+    }
+  })
+
+  app.get('/users', async (req, res) => {
+    try {
+      const users = await User.find({})
+      res.send(users);
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+
+  app.get('/users/:id', async (req, res) => {
+    const _id = req.params.id
+    // User.findById(_id).then(user => {
+    //   if(!user) {
+    //     return res.status(404).send()
+    //   }
+    //   res.send(user)
+    // }).catch(error => {
+    //   res.status(500).send()
+    // })
+    try {
+      const user = await User.findById(_id)
+
+      if(!user) {
+        return res.status(404).send()
+      }
+      res.send(user)
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+  ```
+- Goal: Refactor task routes to use async/await
+
+1. Refactor task routes to use async/await
+2. Test all routes in Postman
+  ```js
+  app.post('/tasks', async (req, res) => {
+    const task = new Task(req.body);
+
+    try {
+      await task.save();
+      res.status(201).send(task)
+    } catch(error) {
+      res.status(400).send(error);
+    }
+  })
+
+  app.get('/tasks', async (req, res) => {
+  try {
+    const tasks = await Task.find({})
+    res.send(tasks);
+  } catch(error) {
+    res.status(500).send();
+  }
+  })
+
+  app.get('/tasks/:id', async (req, res) => {
+    const _id = req.params.id
+  try {
+    const task = await Task.findById(_id);
+    if(!task) {
+    return res.status(404).send()
+    }
+    res.send(task)
+  } catch(error) {
+    res.status(500).send();
+  }
+  ```
+
+<h2 name="60">60. Resource Updating Endpoints 1</h2>
+
+- patch 메소드 사용하기
+  ```js
+  app.patch('/users/:id', async(req, res) => {
+      const _id = req.params.id
+      try {
+        // new: true is going to return a new user as oppose to the existing one that found before the update
+        // runValidators: true는 모델 안에있는 다큐먼트에서만 업데이트를 가능하게 만들어준다
+        const user = await User.findByIdAndUpdate(_id, req.body, {new: true, runValidators: true})
+        if(!user) {
+          return res.status(404).send()
+        }
+        res.send(user)
+      } catch(error) {
+        res.status(400).send(error)
+      }
+    })
+    ```
+  - 데이터에 없는 필드를 업데이트를 하면 무시된다. 
+  - 그렇기 때문에 없는 필드 업데이트를 시도할 때 핸들링한 코드 만들어줘야한다.
+    ```js
+    const updates = Object.keys(req.body) // [age, _id, name, __V]
+    const allowedUpdates = ['name', 'email', 'password', 'age'];
+    const isValidOperation = updates.every(update => {
+      return allowedUpdates.includes(update)
+    })
+
+    if(!isValidOperation) {
+      return res.status(400).send({ error: 'Invalid updates'})
+    }
+    ```
+
+<h2 name="61">61. Resource Updating Endpoints 2</h2>
+
+- Goal: Allow for task updates
+
+1. Setup the route handler
+2. Send error if unknown updates
+3. Attempt to update the task
+  - Handle task not found
+  - Handle validation errors
+  - Handle success
+4. Test your work
+  ```js
+  app.patch('/tasks/:id', async(req, res) => {
+    const updates = Object.keys(req.body);
+    const allowedUpdates = ['description', 'completed'];
+    const isValidOperation = updates.every(update => {
+      return allowedUpdates.includes(update)
+    })
+
+    if(!isValidOperation) {
+      return res.status(400).send({ error: 'Invalid updates'})
+    }
+
+    try {
+      const task = await Task.findByIdAndUpdate(req.params.id, req.body, {new: true, runValidators: true})
+      if(!task) {
+        return res.status(404).send()
+      }
+      res.send(task)
+    } catch {
+      res.status(404).send(error)
+    }
+  })
+  ```
+
+<h2 name="62">62. Resource Deleting Endpoints</h2>
+
+- delete 메소드 사용하기
+  ```js
+  app.delete('/users/:id', async(req, res) => {
+    try {
+      const user = await User.findByIdAndDelete(req.params.id)
+
+      if(!user) {
+        return res.status(404).send()
+      }
+
+      res.send(user)
+    } catch(error) {
+      res.status(500).send()
+    }
+  })
+  ```
+
+- Goal: Allow for removal of tasks
+
+1. Setup the endpoint handler
+2. Attempt to delete the task by id
+  - Handle success
+  - Handle task not found
+  - Handle error
+3. Test your work
+  ```js
+  app.delete('/tasks/:id', async(req, res) => {
+    try {
+      const task = await Task.findByIdAndDelete(req.params.id)
+
+      if(!task) {
+        return res.status(404).send()
+      }
+      res.send(task)
+    } catch (error){
+      res.status(500).send()
+    }
+  })
+  ```
+
+<h2 name="63">63. Separate Route Files</h2>
+
+- index.js 파일안에 모든 라우트들을 따로 분리해보자 
+- 여러개의 express 라우터를 설정한 뒤에 합칠것임 
+- 새로운 라우터를 만들고 설정한 뒤에 express에 등록할 것
+- routers 폴더를 만들고 그 안에 user.js 파일을 만든다.
+- users 모델과 관련된 모든 코드를 옮겨준다.
+- 라우터를 export 해준다. 
+- index.js 파일에서 users 파일을 import 해준다. 
