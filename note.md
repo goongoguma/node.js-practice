@@ -41,7 +41,15 @@
 - [52. 몽구스로 validation 및 sanitization하기 1](#52)
 - [53. 몽구스로 validation 및 sanitization하기 2](#53)
 - [54. REST API 구조](#54)
-- [55. 포스트맨에서 보낸 요청을 DB에 저장하기](#55)
+- [55. post요청 보내기 1](#55)
+- [56. post요청 보내기 2](#56)
+- [57. get요청 보내기 1](#57)
+- [58. get요청 보내기 2](#58)
+- [59. Async/Await 사용](#59)
+- [60. path요청 보내기 1](#60)
+- [61. path요청 보내기 2](#61)
+- [62. delete요청 보내기](#62)
+- [63. 라우터 분류하기](#63)
 
 
 <h2 name="14">14. Removing a Note</h2>
@@ -1974,8 +1982,8 @@ app.get('/weather', (req, res) => {
 - findById를 사용해서 해당 아이디를 가지고 있는 다큐먼트 가져오기
   ```js
   app.get('/users/:id', (req, res) => {
-    const _id = req.params.id
     // params는 라우트 파라메터를 담고있다 
+    const _id = req.params.id
     User.findById(_id).then(user => {
       if(!user) {
         return res.status(404).send()
@@ -2083,25 +2091,26 @@ app.get('/weather', (req, res) => {
   })
 
   app.get('/tasks', async (req, res) => {
-  try {
-    const tasks = await Task.find({})
-    res.send(tasks);
-  } catch(error) {
-    res.status(500).send();
-  }
+    try {
+      const tasks = await Task.find({})
+      res.send(tasks);
+    } catch(error) {
+      res.status(500).send();
+    }
   })
 
   app.get('/tasks/:id', async (req, res) => {
     const _id = req.params.id
-  try {
-    const task = await Task.findById(_id);
-    if(!task) {
-    return res.status(404).send()
+    try {
+      const task = await Task.findById(_id);
+      if(!task) {
+      return res.status(404).send()
+      }
+      res.send(task)
+    } catch(error) {
+      res.status(500).send();
     }
-    res.send(task)
-  } catch(error) {
-    res.status(500).send();
-  }
+  })
   ```
 
 <h2 name="60">60. Resource Updating Endpoints 1</h2>
@@ -2124,7 +2133,7 @@ app.get('/weather', (req, res) => {
     })
     ```
   - 데이터에 없는 필드를 업데이트를 하면 무시된다. 
-  - 그렇기 때문에 없는 필드 업데이트를 시도할 때 핸들링한 코드 만들어줘야한다.
+  - 그렇기 때문에 없는 필드 업데이트를 시도할 때 핸들링할 코드 만들어줘야한다.
     ```js
     const updates = Object.keys(req.body) // [age, _id, name, __V]
     const allowedUpdates = ['name', 'email', 'password', 'age'];
@@ -2167,7 +2176,7 @@ app.get('/weather', (req, res) => {
       }
       res.send(task)
     } catch {
-      res.status(404).send(error)
+      res.status(500).send(error)
     }
   })
   ```
@@ -2223,3 +2232,303 @@ app.get('/weather', (req, res) => {
 - users 모델과 관련된 모든 코드를 옮겨준다.
 - 라우터를 export 해준다. 
 - index.js 파일에서 users 파일을 import 해준다. 
+
+<h2 name="64">64. Securely Storing Passwords 1</h2>
+
+- 지금 DB에서 유저의 계정 정보를 누구나 볼 수 있다.
+- 그러므로 유저의 비밀번호를 해시로 바꿀 것임
+- 이것을 위해 bcryptjs 라이브러리를 사용
+-  npm install bcryptjs
+- 사용예시
+  ```js
+  const myFunction = async() => {
+  const password = 'red12345!';
+
+  // 첫번째 인수는 비밀번호, 두번째 인수는 해시 알고리즘이 몇번 수행되는지(강사는 8번 추천)
+  const hashedPassword = await bcrypt.hash(password, 8)
+
+  console.log(password) // red12345!
+  console.log(hashedPassword) // $2a$08$zQ5lXlxlQ04/KD.65CU42eD6FwMxOxDJ4nvJ1KPFQxvDi82Mz6y/a
+
+  // 입력이 된 비밀번호 확인방법
+  // compare 함수는 첫번째 인수로 비밀번호, 두번째 인수로는 해시화된 비밀번호를 받는다
+  const isMatch = await bcrypt.compare('red12345!', hashedPassword)
+  
+  console.log(isMatch) // true
+  }
+
+  myFunction()
+  ```
+- Encrypt 알고리즘과 해시 알고리즘의 차이
+  - encrypt 알고리즘은 원래 값을 돌려받는다.
+  - jay12345 -> owofmspvmwpe123fpqoewqwec -> jay12345
+  - 해시 알고리즘은 그냥 one-way 알고리즘으로 값을 돌려받지 않는다.
+  - jay12345 -> owofmspvmwpe123fpqoewqwec
+
+<h2 name="65">65. Securely Storing Passwords 2</h2>
+
+- bycript 라이브러리와 app.post와 app.patch를 연결시켜 해시화된 비밀번호 만들기
+- 직접적으로 app.post와 app.patch를 건드리는 것이 아니라 user 모델에서 사용할 것
+- model 폴더에 있는 user.js 파일에서 몽구스의 미들웨어를 사용하기 위해 몽구스 Schema 안에 모델 필드의 이름과 타입 설정값들을 넣고 모델의 두번째 인수로 그 Schema를 넣은뒤 설정해주면 된다. 
+  ```js
+  // models/user.js
+  const userSchema = new mongoose.Schema(
+    {
+      name: {
+        type: String,
+        required: true,
+        trim: true
+      },
+    
+      email: {
+        type: String,
+        required: true,
+        trim: true, 
+        lowercase: true,
+        validate(value) {
+          if (!validator.isEmail(value)) {
+            throw new Error('Email is invalid')
+          }
+        }
+      },
+    
+      age: {
+        type: Number,
+        default: 0,
+        validate(value) {
+          if (value < 0) {
+            throw new Error('Age must be positive number')
+          }
+        }
+      },
+    
+      password: {
+        type: String,
+        required: true,
+        trim: true,
+        minlength: 7,
+        validate(value) {
+          if (value.toLowerCase().includes('password')) {
+            throw new Error('Do not set password as a password')
+          }
+        }
+      }
+      // Hash the plain text password before saving
+      userSchema.pre('save', async function(next) {
+       // user 변수 안에는 요청받은 값들이 들어있다 
+        const user = this
+        // 비밀번호가 해시화 되었는지 검사 
+        // 유저가 비밀번호를 생성했을 때와 업데이트 했을때 실행된다 
+        if (user.isModified('password')) {
+          user.password = await bcrypt.hash(user.password, 8)
+        }
+
+        // console.log(just before saving!)
+
+        next()
+    }
+  );
+
+  const User = mongoose.model('User', userSchema)
+  ```
+- post에서는 'just before saving'메세지가 나오나 patch에서는 라이브러리가 미들웨어를 우회하기 때문에 메세지가 나오지 않는다.
+- 라우터에서 patch의 구조를 조금 바꿔야 한다.
+
+  ```js
+  // routers/user.js
+
+  // const user = await User.findByIdAndUpdate(req.params.id, req.body, {new: true, runValidators: true}) 에서
+
+  // 유저모델의 인스턴스 접근
+  const user = await User.findById(req.params.id)
+
+  // 예를들어 user의 값이 user = {id: '234rfwfe', name: 'kim', email: 'example@.com', password: 'fwfe32e'}이고
+  // 만약 name 프로퍼티의 값을 입력된 값으로({ name: "Godzila" })업데이트 하고 싶다면
+  // const updates = Object.keys(req.body);  =>  ['name']
+  updates.forEach((update) => {
+    user[update] = req.body[update]
+  })
+
+  // 이 부분에서 미들웨어가 실행된다 
+  await user.save()
+
+  // $npm run dev
+  // just before saving!
+  ```
+- Goal: Change how tasks are updated
+
+1. Find the task
+2. Alter the task properties
+3. Save the task
+4. Test your work by updating a task from Postman
+
+  ```js
+  // models/task.js
+  taskSchema.pre('save', async function(next) {
+    const task = this;
+
+    if(task.isModified('description')) {
+      task.description = await bcrypt.hash(task.description, 8)
+    }
+
+    next();
+  })
+
+  const Task = mongoose.model('tasks',taskSchema)
+
+  // routers/task.js
+  const updates = Object.keys(req.body);
+  const allowedUpdates = ['description', 'completed'];
+  const isValidOperation = updates.every(update => {
+    return allowedUpdates.includes(update)
+  })
+
+  if(!isValidOperation) {
+    return res.status(400).send({ error: 'Invalid updates'})
+  }
+  try {
+    // const task = await Task.findByIdAndUpdate(req.params.id, req.body, {new: true, runValidators: true})3
+    const task = await Task.findById(req.params.id);
+
+    updates.forEach((update) => {
+      task[update] = req.body[update]
+    })
+
+    await task.save()
+
+    if(!task) {
+      return res.status(404).send()
+    }
+    res.send(task)
+  } catch(error) {
+    res.status(404).send(error)
+  }
+  ```
+
+<h2 name="66">66. Logging in Users</h2>
+
+- 로그인 기능을 담당할 라우트와 스키마 생성
+
+  ```js
+  // routers/user.js
+  router.post('/users/login', async(req, res) => {
+    try {
+      // findByCredentials은 이메일과 비밀번호를 받아 유저를 반환함
+      const user = await User.findByCredentials(req.body.email, req.body.password);
+      res.send(user);
+    } catch(error) {
+      res.status(400).send();
+    }
+  })
+
+  // models/user.js
+  // schema를 하나 더 생성
+  // findByCredentials 함수는 몽구스에 있는 함수가 아님
+  // statics는 모델에 접근 가능
+  userSchema.statics.findByCredentials = async(email, password) => {
+    // 비밀번호는 해시화가 되어있어서 먼저 이메일을 이용해 계정을 찾고 비밀번호를 확인할것
+    const user = await User.findOne({ email: email })
+    if(!user) {
+      throw new Error("Unable to login");
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password)
+    if(!isMatch) {
+      throw new Error('Unable to login')
+    }
+
+    return user
+  }
+  ```
+
+<h2 name="67">67.JSON Web Tokens</h2>
+
+- 로그인한 유저에게 토큰 보내기
+- JWT(JSON Web Token)을 만들기 위해 npm의 jsonwebtoken을 사용할것
+- npm install jsonwebtoken
+- 사용예시
+  ```js
+  const jwt = require('jsonwebtoken');
+
+  const myFunction = async() => {
+    // 첫번째 인수는 토큰에 들어갈 객체형태의 데이터, 두번째 인수는 토큰 시크릿, 세번째는 옵션(expiresIn은 토큰 만료기간설정 )
+    const token = jwt.sign({ _id: 'abc12345' }, 'I am iron man', {expiresIn: '7 days'})
+    console.log(token)
+
+    // 토큰 확인
+    // 첫번째 인수는 만든 토큰, 두번째 인수는 토큰 시크릿
+    // 시크릿을 통해서 토큰을 해석할 수 있다
+    const data = jwt.verify(token, 'I am iron man')
+    console.log(data)
+  }
+
+  myFunction()
+
+  // 이렇게 data 결과가 나온다
+  // 토큰 헤더 (base 64)
+  // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+  // 토큰 바디 (base 64)
+  //eyJfaWQiOiJhYmMxMjM0NSIsImlhdCI6MTU1OTI4NDYzMX0.
+  // 토큰 signature (base 64)
+  // YTrQfC0uYnDJEMJN6GOVq9bY29-KuoQNqZkQtdlnYZg
+
+  ```
+
+<h2 name="68">68. Generating Authentication Tokens</h2>
+
+- JSON 토큰을 생성해서 유저에게 보내주기
+- 새로운 유저를 만들때와 로그인을 할때 토큰을 보내줘야 하는데 그것을 위해서 재활용이 가능한 함수를 만들것 
+  ```js
+  // routers/user.js
+  router.post('/users/login', async(req, res) => {
+    try {
+      // findByCredentials은 이메일과 비밀번호를 받아 유저를 반환함
+      const user = await User.findByCredentials(req.body.email, req.body.password);
+
+      // user를 위한 토큰을 생성한 뒤 요청자에게 토큰을 보내기 위해 generateAuthToken 함수를 models/user.js에서 만들어준다
+      const token = await user.generateAuthToken()
+
+      res.send({user, token});
+    } catch(error) {
+      res.status(400).send();
+    }
+  })
+
+  // models/user.js
+  
+  // method로 generateAuToken 함수를 생성 
+  userSchema.method.generateAuToken = async function() {
+    const user = this;
+
+    // jwt 만들기
+    const token = jwt.sign({ _id: user._id.toString() }, 'show me the money')
+    return token
+  }
+  ```
+
+<h2 name="69">69. Generating Authentication Tokens</h2>
+
+- 토큰을 user document에 저장 
+- modles/user.js의 userSchema안에 tokens 다큐먼트 만들어주기
+  ```js
+  tokens: [{
+      token: {
+        type: String,
+        required: true
+      }
+    }]
+  ```
+- 다음으로 토큰이 생성되면 배열에 넣어주고 DB에 저장시켜주기
+  ```js
+  userSchema.method.generateAuToken = async function() {
+    const user = this;
+
+    // jwt 만들기
+    const token = jwt.sign({ _id: user._id.toString() }, 'show me the money')
+
+    user.tokens = user.tokens.concat({ token: token})
+    await user.save()
+    
+    return token
+  }
+  ```
