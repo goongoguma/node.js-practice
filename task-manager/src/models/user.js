@@ -58,11 +58,11 @@ userSchema.method.generateAuToken = async function() {
   const user = this;
 
   // jwt 만들기
-  const token = jwt.sign({ _id: user._id.toString() }, 'show me the money')
+  const token = jwt.sign({ _id: user._id.toString() }, 'I am iron man')
 
   user.tokens = user.tokens.concat({ token: token})
   await user.save()
-  
+
   return token
 }
 
