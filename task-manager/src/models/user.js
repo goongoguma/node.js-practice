@@ -54,11 +54,11 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.method.generateAuthToken = async function() {
+userSchema.methods.generateAuthToken = async function() {
   const user = this;
 
   // jwt 만들기
-  const token = jwt.sign({ _id: user._id.toString() }, 'I am iron man')
+  const token = jwt.sign({ _id: user._id.toString() }, 'Iamironman')
 
   user.tokens = user.tokens.concat({ token: token})
   await user.save()

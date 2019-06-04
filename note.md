@@ -50,7 +50,12 @@
 - [61. path요청 보내기 2](#61)
 - [62. delete요청 보내기](#62)
 - [63. 라우터 분류하기](#63)
-
+- [64. 비밀번호 해시화 하기 1 - bcript 사용](#64)
+- [65. 비밀번호 해시화 하기 2 - bcript 사용](#65)
+- [66. 유저의 이메일과 비밀번호로 로그인 하기](#66)
+- [67. 유저에게 보낼 토큰 만들기 - jsonwebtoken 사용](#67)
+- [68. 로그인을 위한 인증토큰 만들기](#68)
+- [69. 인증토큰을 배열에 넣어주기](#69)
 
 <h2 name="14">14. Removing a Note</h2>
 
@@ -2508,7 +2513,31 @@ app.get('/weather', (req, res) => {
 
 <h2 name="69">69. Generating Authentication Tokens</h2>
 
-- 토큰을 user document에 저장 
+- 포스트맨에서 이메일과 비밀번호를 Body에 JSON형식으로 보내면
+  ```json
+  {
+    "email": "ishelinkorzelda@example.com",
+    "password": "qwerty123"
+  }
+  ```
+- 이런 형식으로 response가 온다.
+  ```json
+  {
+    "user": {
+        "age": 0,
+        "_id": "5cf5c6d3e17dfe039410c0ae",
+        "name": "Zelda",
+        "email": "ishelinkorzelda@example.com",
+        "password": "$2a$08$TlIrtluP2bTc.FF0pg0iSeDFB2RkSpKIbjfkhUWRlsMNSRDSL51XC",
+        "__v": 1
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1Y2Y1YzZkM2UxN2RmZTAzOTQxMGMwYWUiLCJpYXQiOjE1NTk2MTIwNDJ9.w5FkvhOB3lQtComYA9ILkrpvBA53-pCdj4dc-goJG4Y"
+  }
+  ```
+- 즉, 유저가 로그인 했다는 뜻
+- 하지만 토큰이 이 상태로 계속 저장되있으면 로그아웃은 불가능하다.
+- 로그아웃 기능 만들어주기위해
+- 토큰을 user 다큐먼트에 저장하자
 - modles/user.js의 userSchema안에 tokens 다큐먼트 만들어주기
   ```js
   tokens: [{
@@ -2524,12 +2553,76 @@ app.get('/weather', (req, res) => {
     const user = this;
 
     // jwt 만들기
-    const token = jwt.sign({ _id: user._id.toString() }, 'show me the money')
-
+    const token = jwt.sign({ _id: user._id.toString() }, 'Iamironman')
+    // 토큰 다큐먼트에 생성된 토큰 붙이기 
     user.tokens = user.tokens.concat({ token: token})
     await user.save()
     
     return token
   }
   ```
-- 아직 다 안끝남
+- 다시한번 포스트맨에서 로그인 요청을 보내면 이렇게 response가 온다.
+  ```json
+  {
+    "user": {
+        "age": 0,
+        "_id": "5cf5c6d3e17dfe039410c0ae",
+        "name": "Zelda",
+        "email": "ishelinkorzelda@example.com",
+        "password": "$2a$08$TlIrtluP2bTc.FF0pg0iSeDFB2RkSpKIbjfkhUWRlsMNSRDSL51XC",
+        "tokens": [
+            {
+                "_id": "5cf5ca8aec9f0c29142a668a",
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1Y2Y1YzZkM2UxN2RmZTAzOTQxMGMwYWUiLCJpYXQiOjE1NTk2MTIwNDJ9.w5FkvhOB3lQtComYA9ILkrpvBA53-pCdj4dc-goJG4Y"
+            }
+        ],
+        "__v": 1
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1Y2Y1YzZkM2UxN2RmZTAzOTQxMGMwYWUiLCJpYXQiOjE1NTk2MTIwNDJ9.w5FkvhOB3lQtComYA9ILkrpvBA53-pCdj4dc-goJG4Y"
+  }
+  ```
+- _id는 sub-document라고 해서 자동적으로 생성되는 것임.
+- Goal: Have singup send back auth token
+1. Generate a token for the saved user
+2. Send back both the token and the user
+3. Create a new user from Postman and confirm the token is there
+  ```js
+  // routers/user.js
+  router.post('/users', async (req, res) => {
+    const user = new User(req.body);
+    try {
+      await user.save();
+      const token = await user.generateAuthToken();
+      res.status(201).send({user, token});
+    } catch(error) {
+      res.status(400).send(error);
+    }
+  })
+  ```
+  ```json
+  // postman에서 유저생성
+  {
+    "name": "mario",
+    "email": "supermario@example.com",
+    "password": "qwerty123"
+  } 
+
+  // response
+  {
+    "user": {
+        "age": 0,
+        "_id": "5cf5d1c4cf12a6247c0f6617",
+        "name": "mario",
+        "email": "supermario@example.com",
+        "password": "$2a$08$PoFPZZG2sjRDEk8Jod3IAO.ydnTJJ0s68R7mlLnHfsqkEJZstXx3S",
+        "tokens": [
+            {
+                "_id": "5cf5d1c4cf12a6247c0f6618",
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1Y2Y1ZDFjNGNmMTJhNjI0N2MwZjY2MTciLCJpYXQiOjE1NTk2MTM4OTJ9.Z-4z4f57lg1ZrQSBIijKPGrsSWeSf_n3m68rjzI9AgA"
+            }
+        ],
+        "__v": 1
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1Y2Y1ZDFjNGNmMTJhNjI0N2MwZjY2MTciLCJpYXQiOjE1NTk2MTM4OTJ9.Z-4z4f57lg1ZrQSBIijKPGrsSWeSf_n3m68rjzI9AgA"
+  }
+  ```
