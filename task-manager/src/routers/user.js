@@ -18,9 +18,7 @@ router.post('/users/login', async(req, res) => {
     const user = await User.findByCredentials(req.body.email, req.body.password);
 
     // 특정 유저에게만 토큰을 전달할것
-    const token = await user.generateAuthToken()
-
-    console.log(token)
+    const token = await user.generateAuthToken();
 
     res.send({user, token});
   } catch(error) {

@@ -54,7 +54,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.method.generateAuToken = async function() {
+userSchema.method.generateAuthToken = async function() {
   const user = this;
 
   // jwt 만들기
