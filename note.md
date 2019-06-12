@@ -56,6 +56,11 @@
 - [67. 유저에게 보낼 토큰 만들기 - jsonwebtoken 사용](#67)
 - [68. 로그인을 위한 인증토큰 만들기](#68)
 - [69. 인증토큰을 배열에 넣어주기](#69)
+- [70. 미들웨어로 인증토큰 제어해주기](#70)
+- [71. 인증토큰 보내기 & 확인하기](#71)
+- [72. 로그아웃 기능 만들어주기](#72)
+- [73. 필요한 정보만 보여주기](#73)
+- [74. 수정 및 삭제 기능에 토큰 인증하기](#74)
 
 <h2 name="14">14. Removing a Note</h2>
 
@@ -2241,7 +2246,7 @@ app.get('/weather', (req, res) => {
 <h2 name="64">64. Securely Storing Passwords 1</h2>
 
 - 지금 DB에서 유저의 계정 정보를 누구나 볼 수 있다.
-- 그러므로 유저의 비밀번호를 해시로 바꿀 것임
+- 그러므로 유저의 비밀번호를 해시로 바꿀 ���임
 - 이것을 위해 bcryptjs 라이브러리를 사용
 -  npm install bcryptjs
 - 사용예시
@@ -2457,13 +2462,13 @@ app.get('/weather', (req, res) => {
 
   const myFunction = async() => {
     // 첫번째 인수는 토큰에 들어갈 객체형태의 데이터, 두번째 인수는 토큰 시크릿, 세번째는 옵션(expiresIn은 토큰 만료기간설정 )
-    const token = jwt.sign({ _id: 'abc12345' }, 'I am iron man', {expiresIn: '7 days'})
+    const token = jwt.sign({ _id: 'abc12345' }, 'Iamironman', {expiresIn: '7 days'})
     console.log(token)
 
     // 토큰 확인
     // 첫번째 인수는 만든 토큰, 두번째 인수는 토큰 시크릿
     // 시크릿을 통해서 토큰을 해석할 수 있다
-    const data = jwt.verify(token, 'I am iron man')
+    const data = jwt.verify(token, 'Iamironman')
     console.log(data)
   }
 
@@ -2506,7 +2511,7 @@ app.get('/weather', (req, res) => {
     const user = this;
 
     // jwt 만들기
-    const token = jwt.sign({ _id: user._id.toString() }, 'show me the money')
+    const token = jwt.sign({ _id: user._id.toString() }, 'Iamironman')
     return token
   }
   ```
@@ -2625,4 +2630,320 @@ app.get('/weather', (req, res) => {
     },
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1Y2Y1ZDFjNGNmMTJhNjI0N2MwZjY2MTciLCJpYXQiOjE1NTk2MTM4OTJ9.Z-4z4f57lg1ZrQSBIijKPGrsSWeSf_n3m68rjzI9AgA"
   }
+  ```
+
+<h2 name="70">70. Express Middleware</h2>
+
+- 유저가 회원가입을 하거나 로그인할때 api가 인증토큰을 유저에게 보내주고 있으므로 이제 다른 요청을 보낼때 토큰을 어떻게 사용할지 알아볼차례.
+- 즉, 회원가입이나 로그인을 제외한 다른 모든 요청들은 인증토큰을 필요로 한다.
+- 클라이언트에서 토큰을 주고 서버에서 토큰의 유효성을 평가하는 방식.
+- 이것을 위해서 express middleware를 사용할 것.
+  ```js
+  // express 미들웨어 사용예시
+  // app.use위에 위치하도록
+  // Without middleware: new request -> run route handler
+  // With middleware: new request -> do something -> run route handler
+
+  // express 미들웨어를 사용하게되면 서버의 행동을 커스터마이징 할 수 있다
+
+  // 이 app.use는 새로운 request와 라우터 핸들러 중간에서 작동한다 
+  app.use((req, res, next) => {
+    if (req.method === 'GET') {
+      res.send('GET requests are disabled')
+    } else {
+      next()
+    }
+  })
+  app.use(express.json())
+  app.use(userRouter);
+  app.use(taskRouter);
+
+  // 포스트맨에 GET 요청을 보내면 GET requests are disabled라는 메세지가 뜬다. 
+  ```
+- Goal: Setup middleware for maintenace mode
+1. Register a new middleware function
+2. Send back a maintenace message with a 503 status code
+3. Try you requests from the server and confirm status/message shows
+  ```js
+  app.use((req, res, next) => {
+    res.status(503).send('Site is currently down. Check back soon!')
+  })
+  ```
+
+<h2 name="71">71. Accepting Authentication Tokens</h2>
+
+- express의 미들웨어를 이용해 요청을 보낼때마다 인증토큰을 보내는 방법을 알아보자
+- src 폴더에 middleware 폴더를 생성후에 auth.js 파일 만들기
+- auth.js에 만들어진 auth 미들웨어는 회원가입/로그인 요청에는 반응하지 않는다. 
+  ```js
+  // auth.js
+  const auth = async (req, res, next) => {
+    console.log('auth middleware')
+    next()
+  }
+
+  module.exports = auth
+  ```
+- auth 미들웨어 연결시키기
+  ```js
+  // user.js
+  // 유저가 /users에 접속하면 auth 미들웨어를 실행시키고 라우트 핸들러를 실행시킬것
+  // 단 라우트 핸들러가 실행되기 위해서는 auth 미들웨어안의 next() 함수가 실행되야한다
+
+    router.get('/users', auth, async (req, res) => {
+    try {
+      const users = await User.find({})
+      res.send(users);
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+  ```
+- 포스트맨에서 요청을 보내면 콘솔창에 auth middleware 메세지가 나온다.
+- 포스트맨에서 유저로부터 읽어들인 토큰정보를 복사해 Headers의 KEY에서는 Authorization, VALUE에서는 Bearer토큰정보를 넣어준다.\
+- 그 다음 보내준 정보를 확인하기 위해 auth 코드를 바꿔준다.
+  ```js
+  // auth.js
+  const jwt = require('jsonwebtoken');
+  const User = require('../models/user');
+
+  const auth = async (req, res, next) => {
+    try {
+      // header 메소드를 이용해 요청보낸 헤더에 접근가능
+      const token = req.header('Authorization')
+      console.log(token)
+    } catch(e) {
+      res.status(401).send({error: 'Please authenticate'})
+    }
+  }
+
+  module.exports = auth
+  ```
+- 그다음 포스트맨으로 요청을 보내면 콘솔창에 보낸 Bearer 토큰값이 나온다.
+- 거기서 jwt를 따로 빼준다음에 시크릿을 이용해 validation 체크해주기
+  ```js
+  const jwt = require('jsonwebtoken');
+  const User = require('../models/user');
+
+  const auth = async (req, res, next) => {
+    try {
+      // header 메소드를 이용해 요청보낸 헤더에 접근가능
+      // 헤더에 있는 토큰을 받아서 단어 Bearer을 제거
+      const token = req.header('Authorization').replace('Bearer ', '')
+      // 토큰 시크릿을 이용해 풀어주기
+      const decoded = jwt.verify(token, 'Iamironman')
+      // tokens.token은 토큰 배열에 보낸 토큰 있는지를 검사
+      // find the user with correct id who has authentication token is stored
+      const user = await User.findOne({ _id: decoded._id, 'tokens.token': token})
+
+      if(!user) {
+        throw new Error()
+      }
+
+      // request 프로퍼티에 user정보를 저장함으로써 라우트 핸들러가 다음에 다시 접근할 수 있다.
+      req.user = user
+      next()
+    } catch(e) {
+      res.status(401).send({error: 'Please authenticate'})
+    }
+  }
+
+  module.exports = auth
+  ```
+- user.js에서 users 미들웨어는 데이터가 노출되어있다는 문제점이 있다. 
+- 즉 로그인을 하게되면 다른 유저의 정보까지 노출될 수 있으므로 user 라우트를 수정해준다.
+  ```js
+  router.get('/users/me', auth, async (req, res) => {
+    res.send(req.user)
+  })
+  ```
+
+<h2 name="72">72. Logging Out</h2>
+
+- 로그아웃을 위한 라우터 설정해주기
+- 특정 인증토큰에 해당되는 유저만 로그아웃되게 만들어주기 
+  ```js
+  const auth = async (req, res, next) => {
+    try {
+      const token = req.header('Authorization').replace('Bearer ', '')
+      const decoded = jwt.verify(token, 'Iamironman')
+      const user = await User.findOne({ _id: decoded._id, 'tokens.token': token})
+      if(!user) {
+        throw new Error()
+      }
+
+      // 토큰 설정
+      req.token = token
+      req.user = user
+      next()
+    } catch(e) {
+      res.status(401).send({error: 'Please authenticate'})
+    }
+  }
+  ```
+  ```js
+  // routers/user.js
+  router.post('/users/logout', auth, async (req, res) => {
+    try {
+      req.user.tokens = req.user.tokens.filter(token => {
+        // 발견한 토큰이 인증때 사용한 토큰이면 true 아니면 false
+        return token.token !== req.token
+      })
+      // 발견되면 저장하고 200 코드 보내주기
+      await req.user.save()
+      res.send()
+    } catch(e) {
+      res.status(500).send()
+    }
+  })
+  ```
+- Goal: Create a way to logout of all sessions
+1. Setup POST/users/logoutAll
+2. Create the router handler to wipe the tokens array
+  - Send 200 or 500
+3. Test your work
+  - Login a few times and logout of all. Check database
+  ```js
+    router.post('/users/logoutAll', auth, async (req, res) => {
+    try {
+      req.user.tokens = []
+      await req.user.save()
+      res.send()
+    } catch(e) {
+      res.status(500).send()
+    }
+  })
+  ```
+
+<h2 name="73">73. Hiding Private Data</h2>
+
+- 로그인하면 유저에게 필요한 정보만 보여주기 (프로필 데이터만 보여주기)
+- 그렇게 하기 위해서 로그인 라우터 수정해주기
+  ```js
+  // models/user.js
+  userSchema.methods.getPublicProfile = function() {
+    const user = this;
+    // 유저데이터 
+    // userObject를 이용해 원하는 데이터만을 노출시킬 수 있다. 
+    const userObject = user.toObject();
+
+    // userObject안에서 필요없는 데이터 지우기
+    delete userObject.password
+    delete userObject.tokens
+
+    return userObject
+  }
+ 
+  // routers/user.js
+  router.post('/users/login', async (req, res) => {
+    try {
+      const user = await User.findByCredentials(req.body.email, req.body.password);
+
+      const token = await user.generateAuthToken();
+
+      res.send({user: user.getPublicProfile(), token});
+    } catch(error) {
+      res.status(400).send();
+    }
+  })
+  ```
+  ```json
+  // 포스트맨에서 로그인 요청을 보내면 이렇게 response가 온다
+  // user에서 password와 token이 지워졌다 
+  {
+      "user": {
+          "age": 0,
+          "_id": "5cf5c6d3e17dfe039410c0ae",
+          "name": "Zelda",
+          "email": "ishelinkorzelda@example.com",
+          "__v": 12
+      },
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1Y2Y1YzZkM2UxN2RmZTAzOTQxMGMwYWUiLCJpYXQiOjE1NjAyMTUyNzR9.-IrKIXTfpbHqUwKpP_M3LwQH2cHYLvUwtrG8Xt9DRek"
+  }
+  ```
+- 요청을 보낼때마다 getPublicProfile함수가 실행된다. 좀 더 효율적으로 코드를 바꿔보자 
+  ```js
+  // models/user.js
+  userSchema.methods.toJSON = function() {
+    const user = this;
+    // 유저데이터 
+    // userObject를 이용해 원하는 데이터만을 노출시킬 수 있다. 
+    const userObject = user.toObject();
+
+    // userObject안에서 필요없는 데이터 지우기
+    delete userObject.password
+    delete userObject.tokens
+
+    return userObject
+  }
+
+  // routers/user.js
+  router.post('/users/login', async (req, res) => {
+    try {
+      const user = await User.findByCredentials(req.body.email, req.body.password);
+      const token = await user.generateAuthToken();
+      res.send({user, token});
+    } catch(error) {
+      res.status(400).send();
+    }
+  })
+  ```
+  ```json
+  // 포스트맨에서 get profile을 하게되면
+  {
+      "age": 0,
+      "_id": "5cf5c6d3e17dfe039410c0ae",
+      "name": "Zelda",
+      "email": "ishelinkorzelda@example.com",
+      "__v": 13
+  }
+  ```
+<h2 name="74">74. Authentication User Endpoints</h2>
+
+- 수정 및 삭제 기능에도 authentication 작업해주기 
+  ```js
+  // 사용자의 id값을 숨기기 위해 :id대신 /me를 사용 
+  router.delete('/users/me', auth, async (req, res) => {
+    try {
+      // const user = await User.findByIdAndDelete(req.user._id)
+
+      // if(!user) {
+      //   return res.status(404).send()
+      // }
+      await req.user.remove()
+      res.send(req.user)
+    } catch(error) {
+      res.status(500).send()
+    }
+  })
+  ```
+- Goal: Refactor the update profile route
+1. Update the URL to /users/me
+2. Add the authentication middleware into the mix
+3. Use the existing user document instead of featching via param id
+4. Test your work in Postman
+  ```js
+  router.patch('/users/me', auth, async(req, res) => { 
+    const updates = Object.keys(req.body); // [age, _id, name, __V]
+    const allowedUpdates = ['name', 'email', 'password', 'age'];
+    const isValidOperation = updates.every(update => {
+      return allowedUpdates.includes(update)
+    })
+
+    if(!isValidOperation) {
+      return res.status(400).send({ error: 'Invalid updates'})
+    }
+
+    try {
+      // const user = await User.findById(req.params.id)
+      updates.forEach((update) => {
+        req.user[update] = req.body[update]
+      })
+      await req.user.save()
+
+      res.send(req.user)
+    } catch(error) {
+      res.status(400).send(error)
+    }
+  })
   ```

@@ -45,6 +45,7 @@ const userSchema = new mongoose.Schema(
         }
       }
     },
+    
     tokens: [{
       token: {
         type: String,
@@ -53,6 +54,19 @@ const userSchema = new mongoose.Schema(
     }]
   }
 );
+
+userSchema.methods.toJSON = function() {
+  const user = this;
+  // 유저데이터 
+  // userObject를 이용해 원하는 데이터만을 노출시킬 수 있다. 
+  const userObject = user.toObject();
+
+  // userObject안에서 필요없는 데이터 지우기
+  delete userObject.password
+  delete userObject.tokens
+
+  return userObject
+}
 
 userSchema.methods.generateAuthToken = async function() {
   const user = this;
@@ -66,7 +80,7 @@ userSchema.methods.generateAuthToken = async function() {
   return token
 }
 
-userSchema.statics.findByCredentials = async(email, password) => {
+userSchema.statics.findByCredentials = async (email, password) => {
  
   const user = await User.findOne({ email: email })
 
