@@ -2924,7 +2924,7 @@ app.get('/weather', (req, res) => {
 4. Test your work in Postman
   ```js
   router.patch('/users/me', auth, async(req, res) => { 
-    const updates = Object.keys(req.body); // [age, _id, name, __V]
+    const updates = Object.keys(req.body); // [age, _id, name, __v]
     const allowedUpdates = ['name', 'email', 'password', 'age'];
     const isValidOperation = updates.every(update => {
       return allowedUpdates.includes(update)
@@ -2947,3 +2947,31 @@ app.get('/weather', (req, res) => {
     }
   })
   ```
+
+<h2 name="75">75. The User/Task Relationship</h2>
+
+- task영역 작업을 시작할것 
+- user와 task의 관계를 생각해 볼 것. (로그인한 유저의 task만 보도록 만들어야 한다)
+- task 라우터에서 task를 만든 유저의 정보를 저장할것 
+  ```js
+  const Task = new mongoose.Schema(
+    {
+      description: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      completed: {
+        type: Boolean,
+        default: false
+      },
+      owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+      }
+    }
+  )
+
+  module.exports = Task
+  ```
+- task를 생성하는 endpoint 고쳐주기 

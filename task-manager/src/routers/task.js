@@ -1,9 +1,17 @@
 const express = require('express');
-const router = new express.Router();
 const Task = require('../models/task');
+const auth = require('../middleware/auth');
+const router = new express.Router();
 
-router.post('/tasks', async (req, res) => {
-  const task = new Task(req.body);
+router.post('/tasks', auth, async (req, res) => {
+
+ // task를 생성한 유저의 정보와 연결시켜주기 
+  const task = new Task({
+    // task를 생성한 유저의 정보 + req.body에 있는 모든정보 받아오기
+    ...req.body,
+    // task의 오너 생성 
+    owner: req.user._id
+  })
 
   try {
     await task.save();

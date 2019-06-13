@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const taskSchema = new mongoose.Schema(
+const Task = new mongoose.Schema(
   {
     description: {
       type: String,
@@ -11,20 +11,28 @@ const taskSchema = new mongoose.Schema(
     completed: {
       type: Boolean,
       default: false
+    },
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
     }
   }
 )
 
-taskSchema.pre('save', async function(next) {
-  const task = this;
-
-  if(task.isModified('description')) {
-    task.description = await bcrypt.hash(task.description, 8)
-  }
-
-  next();
-})
-
-const Task = mongoose.model('tasks',taskSchema)
-
 module.exports = Task
+
+
+
+// taskSchema.pre('save', async function(next) {
+//   const task = this;
+
+//   if(task.isModified('description')) {
+//     task.description = await bcrypt.hash(task.description, 8)
+//   }
+
+//   next();
+// })
+
+// const Task = mongoose.model('tasks',taskSchema)
+
+
