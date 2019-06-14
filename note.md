@@ -61,6 +61,7 @@
 - [72. 로그아웃 기능 만들어주기](#72)
 - [73. 필요한 정보만 보여주기](#73)
 - [74. 수정 및 삭제 기능에 토큰 인증하기](#74)
+- [75. User와 Task의 관계](#75)
 
 <h2 name="14">14. Removing a Note</h2>
 
@@ -2950,10 +2951,12 @@ app.get('/weather', (req, res) => {
 
 <h2 name="75">75. The User/Task Relationship</h2>
 
-- task영역 작업을 시작할것 
-- user와 task의 관계를 생각해 볼 것. (로그인한 유저의 task만 보도록 만들어야 한다)
+- 그동안 건드리지 않았던 task영역 작업을 시작할것 
+- user와 task의 관계를 생각해 볼 것 (로그인한 유저의 task만 보도록 만들어야 한다)
+- 해당 로그인한 유저의 task만 저장되도록 만들것 
 - task 라우터에서 task를 만든 유저의 정보를 저장할것 
   ```js
+  // models/task.js
   const Task = new mongoose.Schema(
     {
       description: {
@@ -2972,6 +2975,103 @@ app.get('/weather', (req, res) => {
     }
   )
 
-  module.exports = Task
+  module.exports = mongoose.model('Task', Task);
   ```
-- task를 생성하는 endpoint 고쳐주기 
+- task를 생성하는 endpoint 고쳐주기
+  ```js
+  // routers/task.js
+  router.post('/tasks', auth, async (req, res) => {
+  // task를 생성한 유저의 정보와 연결시켜주기 
+    const task = new Task({
+      // task를 생성한 유저의 정보 + req.body에 있는 모든정보 받아오기
+      ...req.body,
+      // task의 owner 프로퍼티 생성 
+      owner: req.user._id
+    })
+
+    try {
+      await task.save();
+      res.status(201).send(task)
+    } catch(error) {
+      res.status(400).send(error);
+    }
+  })
+  ```
+- 포스트맨에 Create task 요청을 보내면 
+  ```json
+  {
+    "description": "Finish Node.js course"
+  }
+  ```
+- 이제 이렇게 response가 온다.
+  ```json
+  {
+      "completed": false,
+      // 생성된 task의 id
+      "_id": "5d02f9a924f79e3054551dc7",
+      "description": "Finish Node.js course",
+      // owner는 생성한 유저의 id이다 
+      "owner": "5d01aaacf3e62034d0170e2c",
+      "__v": 0
+  }
+  ```
+- task의 response 결과값으로 유저정보 찾기 
+  ```js
+  // models/task.js
+  const Task = new mongoose.Schema(
+    {
+      description: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      completed: {
+        type: Boolean,
+        default: false
+      },
+      owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        // ref를 이용해 다른 모델을 참조할 수 있다. 
+        ref: 'User'
+      }
+    }
+  )
+
+  module.exports = mongoose.model('Task', Task);
+  ```
+  ```js
+  // index.js
+  const main = async () => {
+    const task = await Task.findById('5d02f9a924f79e3054551dc7')
+    // populate 메소드를 이용해 해당 task를 만든 유저의 정보를 가져올것 
+    await task.populate('owner').execPopulate()
+    console.log(task.owner)
+  }
+
+  main()
+  ```
+- 반대로 유저의 정보를 이용해 해당 유저의 task를 찾아보자 
+  ```js
+  // models/user.js
+
+  // virtual은 실제 DB에 있는 데이터가 아니라 두개의 엔티티(모델)의 관계를 나타낸다
+  // 즉, 실제적으로 DB의 데이터는 건드리지 않고 두 모델의 관계를 이용해 필요한 데이터를 확인할 때 쓴다
+  userSchema.virtual('tasks', {
+    ref: 'Task',
+    // 유저의 id 
+    localField: '_id',
+    foreignField: 'owner'
+  })
+  ```
+  ```js
+  // index.js
+  const User = require('./models/user');
+
+  const main = async () => {
+    // task와는 반대로 유저의 id를 사용할것 
+    const user = await User.findById('5d01aaacf3e62034d0170e2c');
+    await user.populate('tasks').execPopulate();
+    console.log(user.tasks);
+  }
+  ```

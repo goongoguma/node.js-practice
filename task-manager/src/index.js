@@ -24,3 +24,15 @@ app.use(taskRouter);
 app.listen(port, () => {
   console.log('Server is up on port' + port)
 })
+
+const Task = require('./models/task');
+const User = require('./models/user');
+
+const main = async () => {
+  // task와는 반대로 유저의 id를 사용할것 
+  const user = await User.findById('5d01aaacf3e62034d0170e2c');
+  await user.populate('tasks').execPopulate();
+  console.log(user.tasks);
+}
+
+main();

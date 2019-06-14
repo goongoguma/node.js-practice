@@ -55,6 +55,15 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// virtual은 실제 DB에 있는 데이터가 아니라 두개의 엔티티(모델)의 관계를 나타낸다
+// 즉, 실제적으로 DB의 데이터는 건드리지 않고 두개의 관계를 이용해 필요한 데이터를 확인할 때 쓴다
+userSchema.virtual('tasks', {
+  ref: 'Task',
+  // 유저의 id 
+  localField: '_id',
+  foreignField: 'owner'
+})
+
 userSchema.methods.toJSON = function() {
   const user = this;
   // 유저데이터 

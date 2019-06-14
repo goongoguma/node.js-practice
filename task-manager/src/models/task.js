@@ -14,12 +14,13 @@ const Task = new mongoose.Schema(
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true
+      required: true,
+      ref: 'User'
     }
   }
 )
 
-module.exports = Task
+module.exports = mongoose.model('Task', Task);
 
 
 
