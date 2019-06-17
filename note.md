@@ -2953,7 +2953,7 @@ app.get('/weather', (req, res) => {
 
 - 그동안 건드리지 않았던 task영역 작업을 시작할것 
 - user와 task의 관계를 생각해 볼 것 (로그인한 유저의 task만 보도록 만들어야 한다)
-- 해당 로그인한 유저의 task만 저장되도록 만들것 
+- 로그인한 해당 유저의 task만 저장되도록 만들것 
 - task 라우터에서 task를 만든 유저의 정보를 저장할것 
   ```js
   // models/task.js
@@ -3075,3 +3075,112 @@ app.get('/weather', (req, res) => {
     console.log(user.tasks);
   }
   ```
+
+<h2 name="76">76. Authenticating Task Endpoints</h2>
+
+- task관련 엔드포인트에 authentication 붙여주기
+- 아이디를 가져오는 라우터에 작업할것
+  ```js
+  router.get('/tasks/:id', auth, async(req, res) => {
+  const _id = req.params.id
+  try {
+    //  const task = await Task.findById(_id);
+    // 자기자신이 생성한 task를 DB에서 가져온다 
+    const task = await Task.findOne({ _id, owner: req.user._id })
+
+    if(!task) {
+      return res.status(404).send()
+    }
+    res.send(task)
+  } catch(error) {
+      res.status(500).send();
+  }
+  })
+  ```
+- 포스트맨에서 새로운 유저를 생성하고 새로운 task를 생성한 뒤, task 뒤에 생성된 해당 유저의 아이디 값을 붙이고 GET요청을 보내면 task 가져오는 것을 확인 할 수 있다. 
+- 다른 계정으로 로그인을 해준 뒤 아까전에 작성된 유저의 id로 task를 불러올려고 하면 400에러가 뜬다. 
+- 즉, task를 생성한 해당 유저가 아니면 task의 내용들을 볼 수 없다.
+- Goal: Refactor GET /tasks
+1. Add authentication
+2. Return tasks only for the authenticated user
+3. Test your work 
+  ```js
+  router.get('/tasks', auth, async (req, res) => {
+  try {
+    const tasks = await Task.find({ owner: req.user._id })
+    //  await req.user.populate('tasks').execPopulate()
+    res.send(tasks);
+  } catch(error) {
+    res.status(500).send();
+  }
+  })
+  // 로그인한 해당 유저의 모든 task를 가져온다
+  ```
+- 내가 만든 task만 업데이트 시켜주기
+  ```js
+  router.patch('/tasks/:id', auth, async(req, res) => {
+    const updates = Object.keys(req.body);
+    const allowedUpdates = ['description', 'completed'];
+    const isValidOperation = updates.every(update => {
+      return allowedUpdates.includes(update)
+    })
+
+    if(!isValidOperation) {
+      return res.status(400).send({ error: 'Invalid updates'})
+    }
+
+    try {
+      const task = await Task.findOne({_id: req.params.id, owner: req.user._id})
+      // const task = await Task.findByIdAndUpdate(req.params.id, req.body, {new: true, runValidators: true})3
+      // const task = await Task.findById(req.params.id);
+
+      await task.save()
+
+      if(!task) {
+        return res.status(404).send()
+      }
+
+      updates.forEach((update) => {
+        task[update] = req.body[update]
+      })
+
+      res.send(task)
+    } catch(error) {
+      res.status(404).send(error)
+    }
+  })
+  ```
+- Goal: Refactore DELETE /tasks/:id
+1. Add authentication
+2. Find the task by _id/owner (findOneAndDelete)
+3. Test your work!
+  ```js
+  router.delete('/tasks/:id', auth, async(req, res) => {
+    try {
+      const task = await Task.findOneAndDelete({_id: req.params.id, owner: req.user._id})
+
+      if(!task) {
+        return res.status(404).send()
+      }
+      res.send(task)
+    } catch (error){
+      res.status(500).send()
+    }
+  })
+  ```
+
+<h2 name="77">77. Cascade Delete Tasks</h2>
+
+- 유저 프로필이 삭제되면 해당 유저의 task 삭제시키기
+  ```js
+  // models/user.js
+  const Task = require('./task');
+
+  // Delete user tasks when user is removed
+  userSchema.pre('remove', async function(next) {
+    const user = this;
+    await Task.deleteMany({ owner: user._id })
+    next();
+  })
+  ```
+- 포스트맨에서 delete 요청을 보내면 해당 유저의 모든 정보가 삭제된다. 
