@@ -62,6 +62,10 @@
 - [73. 필요한 정보만 보여주기](#73)
 - [74. 수정 및 삭제 기능에 토큰 인증하기](#74)
 - [75. User와 Task의 관계](#75)
+- [76. 각 요청에 인증기능 넣어주기](#76)
+- [77. 유저 프로필 삭제 및 해당 유저 task 삭제](#77)
+- [78. 생성 및 수정에 타임스탬프 붙이기](#78)
+- [79. 필터링으로 원하는 데이터 가져오기](#79)
 
 <h2 name="14">14. Removing a Note</h2>
 
@@ -3082,22 +3086,22 @@ app.get('/weather', (req, res) => {
 - 아이디를 가져오는 라우터에 작업할것
   ```js
   router.get('/tasks/:id', auth, async(req, res) => {
-  const _id = req.params.id
-  try {
-    //  const task = await Task.findById(_id);
-    // 자기자신이 생성한 task를 DB에서 가져온다 
-    const task = await Task.findOne({ _id, owner: req.user._id })
+    const _id = req.params.id
+    try {
+      //  const task = await Task.findById(_id);
+      // 자기자신이 생성한 task를 DB에서 가져온다 
+      const task = await Task.findOne({ _id, owner: req.user._id })
 
-    if(!task) {
-      return res.status(404).send()
+      if(!task) {
+        return res.status(404).send()
+      }
+      res.send(task)
+    } catch(error) {
+        res.status(500).send();
     }
-    res.send(task)
-  } catch(error) {
-      res.status(500).send();
-  }
   })
   ```
-- 포스트맨에서 새로운 유저를 생성하고 새로운 task를 생성한 뒤, task 뒤에 생성된 해당 유저의 아이디 값을 붙이고 GET요청을 보내면 task 가져오는 것을 확인 할 수 있다. 
+- 포스트맨에서 새로운 유저를 생성하고 새로운 task를 생성한 뒤, task 뒤에 생성된 해당 task의 아이디 값을 붙이고 GET요청을 보내면 task 가져오는 것을 확인 할 수 있다. 
 - 다른 계정으로 로그인을 해준 뒤 아까전에 작성된 유저의 id로 task를 불러올려고 하면 400에러가 뜬다. 
 - 즉, task를 생성한 해당 유저가 아니면 task의 내용들을 볼 수 없다.
 - Goal: Refactor GET /tasks
@@ -3106,13 +3110,13 @@ app.get('/weather', (req, res) => {
 3. Test your work 
   ```js
   router.get('/tasks', auth, async (req, res) => {
-  try {
-    const tasks = await Task.find({ owner: req.user._id })
-    //  await req.user.populate('tasks').execPopulate()
-    res.send(tasks);
-  } catch(error) {
-    res.status(500).send();
-  }
+    try {
+      const tasks = await Task.find({ owner: req.user._id })
+      //  await req.user.populate('tasks').execPopulate()
+      res.send(tasks);
+    } catch(error) {
+      res.status(500).send();
+    }
   })
   // 로그인한 해당 유저의 모든 task를 가져온다
   ```
@@ -3184,3 +3188,148 @@ app.get('/weather', (req, res) => {
   })
   ```
 - 포스트맨에서 delete 요청을 보내면 해당 유저의 모든 정보가 삭제된다. 
+
+<h2 name="78">78. Working with Timestamps</h2>
+
+- 몽고DB 필드에 createdAt과 updatedAt 필드를 만들것 
+- models 폴더에 있는 user.js 파일에서 스키마 수정하기 
+- 스키마의 두번째 인수로 객체로 timestamps 넣어주기
+  ```js
+  const userSchema = new mongoose.Schema(
+    {
+      name: {
+        type: String,
+        required: true,
+        trim: true
+      },
+    
+      email: {
+        type: String,
+        unique: true,
+        required: true,
+        trim: true, 
+        lowercase: true,
+        validate(value) {
+          if (!validator.isEmail(value)) {
+            throw new Error('Email is invalid')
+          }
+        }
+      },
+    
+      age: {
+        type: Number,
+        default: 0,
+        validate(value) {
+          if (value < 0) {
+            throw new Error('Age must be positive number')
+          }
+        }
+      },
+    
+      password: {
+        type: String,
+        required: true,
+        trim: true,
+        minlength: 7,
+        validate(value) {
+          if (value.toLowerCase().includes('password')) {
+            throw new Error('Do not set password as a password')
+          }
+        }
+      },
+      
+      tokens: [{
+        token: {
+          type: String,
+          required: true
+        }
+      }]
+    }, {
+      timestamps: true
+    }
+  );
+  ```
+- Create user에서 유저를 새로 생성하면 이렇게 response가 온다.
+  ```json
+  {
+      "user": {
+          "age": 0,
+          "_id": "5d08413a8628cf2a44b6c5fa",
+          "name": "laraCroft2",
+          "email": "squareenix2@example.com",
+          "createdAt": "2019-06-18T01:41:14.626Z",
+          "updatedAt": "2019-06-18T01:41:14.666Z",
+          "__v": 1
+      },
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1ZDA4NDEzYTg2MjhjZjJhNDRiNmM1ZmEiLCJpYXQiOjE1NjA4MjIwNzR9.VwCMQw0HU6Ff-OR-TilkHN_VjZfluikPdESslAXExbI"
+  }
+  ```
+- Goal: Refactor task model to add timestamps
+1. Explicitly create schema
+2. Setup timestamps
+3. Create tasks from Postman to test work
+  ```js
+  const Task = mongoose.Schema(
+    {
+      description: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      completed: {
+        type: Boolean,
+        default: false
+      },
+      owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User'
+      }
+    },
+    {
+      timestamps: true
+    }
+  )
+
+  module.exports = mongoose.model('Task', Task);
+  ```
+- 포스트맨으로 요청을 보내면 이렇게 response가 온다.
+  ```json
+  {
+      "completed": true,
+      "_id": "5d0842262655c30bf0a489a0",
+      "description": "upgrade machine-gun",
+      "owner": "5d08413a8628cf2a44b6c5fa",
+      "createdAt": "2019-06-18T01:45:10.815Z",
+      "updatedAt": "2019-06-18T01:45:10.815Z",
+      "__v": 0
+  }
+  ```
+
+<h2 name="79">79. Filtering Data</h2>
+
+- 라우트에 옵션을 줌으로써 원하는 데이터를 가져오게 만들 수 있다. 
+  ```js
+  //GET /tasks?completed=true (or tasks?completed=false)
+  router.get('/tasks', auth, async (req, res) => {
+    
+    const match = {};
+    
+    // req.query.completed는 사용된 value의 값을 가지고있다. 
+    if (req.query.completed) {
+      match.completed = req.query.completed === 'true'
+    }
+
+    try {
+      //  const tasks = await Task.find({ owner: req.user._id })
+      await req.user.populate({
+        path: 'tasks',
+        match
+      }).execPopulate()
+      res.send(req.user.tasks);
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+  ```
+- 포스트맨에서 task를 GET하면 옵션 completed가 true인 task만을 response로 받는다. 
