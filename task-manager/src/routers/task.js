@@ -21,20 +21,34 @@ router.post('/tasks', auth, async (req, res) => {
 })
 
 // GET /tasks?completed=true (or tasks?completed=false)
+// GET /tasks?limit=10&skip=10 (skip은 지나간 페이지)
+// GET /tasks?sortBy=createdAt:desc
 router.get('/tasks', auth, async (req, res) => {
   
   const match = {};
-  
+  const sort = {};
+
   // req.query.completed는 사용된 value의 값을 가지고있다. 
   if (req.query.completed) {
     match.completed = req.query.completed === 'true'
+  }
+
+  if (req.query.sortBy) {
+    const parts = req.query.sortBy.split(':')
+    sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
   }
 
   try {
     //  const tasks = await Task.find({ owner: req.user._id })
     await req.user.populate({
       path: 'tasks',
-      match
+      match,
+      // 페이지네이션을 위해 options 추가
+      options: {
+        limit: parseInt(req.query.limit),
+        skip: parseInt(req.query.skip),
+        sort
+      }
     }).execPopulate()
     res.send(req.user.tasks);
   } catch(error) {

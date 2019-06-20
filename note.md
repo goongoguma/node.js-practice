@@ -66,6 +66,8 @@
 - [77. 유저 프로필 삭제 및 해당 유저 task 삭제](#77)
 - [78. 생성 및 수정에 타임스탬프 붙이기](#78)
 - [79. 필터링으로 원하는 데이터 가져오기](#79)
+- [80. 페이지네이션](#80)
+- [81. 데이터 sorting](#81)
 
 <h2 name="14">14. Removing a Note</h2>
 
@@ -3333,3 +3335,144 @@ app.get('/weather', (req, res) => {
   })
   ```
 - 포스트맨에서 task를 GET하면 옵션 completed가 true인 task만을 response로 받는다. 
+
+<h2 name="80">80. Paginating Data</h2>
+
+- 페이지네이션을 구현해 볼 것.
+- 페이지네이션에는 limit과 skip 옵션이 필요하다.
+  ```js
+  // GET /tasks?limit=10&skip=10 (skip은 지나간 페이지)
+  router.get('/tasks', auth, async (req, res) => {
+    
+    const match = {};
+    
+    // req.query.completed는 사용된 value의 값을 가지고있다. 
+    if (req.query.completed) {
+      match.completed = req.query.completed === 'true'
+    }
+
+    try {
+      //  const tasks = await Task.find({ owner: req.user._id })
+      await req.user.populate({
+        path: 'tasks',
+        match,
+        // 페이지네이션을 위해 options 추가
+        options: {
+          // 유저가 입력한 숫자만큼 결과 보여주기
+          limit: parseInt(req.query.limit)
+        }
+      }).execPopulate()
+      res.send(req.user.tasks);
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+  ```
+- 포스트맨에서 limit을 사용해 task들을 GET하면( {{url}}/tasks?limit=3 ) 해당 limit의 입력한 숫자만큼의 결과를 가져온다. 
+- skip 기능도 만들어보자
+- Goal: Setup support for skip
+1. Setup "skip" option
+  - Parse query value to integer
+2. Fire off some requests to test it's working
+  - Fetch the 1st page of 2 and then the 3rd page of 2
+  - Fetch the 1st page of 3 and then the 2nd page of 3
+  ```js
+  // GET /tasks?limit=10&skip=10 (skip은 지나간 페이지)
+  router.get('/tasks', auth, async (req, res) => {
+    
+    const match = {};
+    
+    // req.query.completed는 사용된 value의 값을 가지고있다. 
+    if (req.query.completed) {
+      match.completed = req.query.completed === 'true'
+    }
+
+    try {
+      //  const tasks = await Task.find({ owner: req.user._id })
+      await req.user.populate({
+        path: 'tasks',
+        match,
+        // 페이지네이션을 위해 options 추가
+        options: {
+          limit: parseInt(req.query.limit),
+          skip: parseInt(req.query.skip)
+        }
+      }).execPopulate()
+      res.send(req.user.tasks);
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+  ```
+
+<h2 name="81">81. Sorting Data</h2>
+
+- 특정 조건에 따라 데이터 정리해주기 
+- options 객체에 sort 넣어주기
+  ```js
+  router.get('/tasks', auth, async (req, res) => {
+  
+    const match = {};
+    
+    // req.query.completed는 사용된 value의 값을 가지고있다. 
+    if (req.query.completed) {
+      match.completed = req.query.completed === 'true'
+    }
+
+    try {
+      //  const tasks = await Task.find({ owner: req.user._id })
+      await req.user.populate({
+        path: 'tasks',
+        match,
+        // 페이지네이션을 위해 options 추가
+        options: {
+          limit: parseInt(req.query.limit),
+          skip: parseInt(req.query.skip),
+          sort: {
+            // completed와 같은 boolean값일 경우 1은 false 순서로, -1은 true 순서로 정렬된다 
+            createdAt: -1 // ascending is 1,  descending is -1
+          }
+        }
+      }).execPopulate()
+      res.send(req.user.tasks);
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+  ```
+- 이제 하드코딩이 아닌 유저의 request에 따라 자동적으로 내림차순이나 올림차순으로 정렬되게 만들어보자
+  ```js
+  // GET /tasks?sortBy=createdAt:desc
+  router.get('/tasks', auth, async (req, res) => {
+    
+    const match = {};
+    const sort = {};
+
+    // req.query.completed는 사용된 value의 값을 가지고있다. 
+    if (req.query.completed) {
+      match.completed = req.query.completed === 'true'
+    }
+
+    if (req.query.sortBy) {
+      const parts = req.query.sortBy.split(':')
+      sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
+    }
+
+    try {
+      //  const tasks = await Task.find({ owner: req.user._id })
+      await req.user.populate({
+        path: 'tasks',
+        match,
+        // 페이지네이션을 위해 options 추가
+        options: {
+          limit: parseInt(req.query.limit),
+          skip: parseInt(req.query.skip),
+          sort
+        }
+      }).execPopulate()
+      res.send(req.user.tasks);
+    } catch(error) {
+      res.status(500).send();
+    }
+  })
+  ```
