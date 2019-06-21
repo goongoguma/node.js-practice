@@ -3476,3 +3476,23 @@ app.get('/weather', (req, res) => {
     }
   })
   ```
+
+<h2 name="82">82. Adding Support for File Uploads</h2>
+
+- Express 자체를 이용해 파일 업로드 기능은 없으므로 multer라는 라이브러리를 이용한다. 
+  ```js
+  // multer 설치 후
+  const multer = require('multer');
+
+  const upload = multer({
+    // images라는 디렉토리가 생성된다 
+    dest: 'images'
+  });
+
+  // 'upload'는 multer가 포스트맨에서 보낸 파일을 찾기위한 키 값
+  app.post('/upload', upload.single('upload'), (req, res) => {
+    res.send()
+  })
+  ```
+- 포스트맨 Update user에서 form-data로 업로드 할려고 하는 파일 선택하고 보내기3
+- image 폴더가 생성되고 업로드한 이미지의 파일이 생성된다. 하지만 2진수 데이터로 되어있며 확장자가 없으므로 추가해준다. 
